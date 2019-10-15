@@ -72,8 +72,11 @@ def handle_movie(movieId, imdbId):
 def handle_chunk(chunk):
     succeeded = 0
     for movieId, imdbId in chunk:
-        if handle_movie(movieId, imdbId):
-            succeeded += 1
+        try:
+            if handle_movie(movieId, imdbId):
+                succeeded += 1
+        except Exception as e:
+            print(f'{movieId}/{imdbId} failed: {e}')
 
     return succeeded
 
