@@ -13,8 +13,11 @@ links = pd.read_csv(f'{base_path}/links.csv')
 
 # Split title and year
 movies['year'] = movies.title.str.extract('\((\d{4})\)', expand=True)
+movies.dropna(inplace=True)
+movies.year = movies.year.astype(int)
 movies.title = movies.title.str[:-7]
 movies.genres = movies.genres.str.split('|').tolist()
+movies = movies[movies.year <= 2016]
 
 def transform_title(title):
     title = re.sub(r"\(.*\)", "", title).strip()
