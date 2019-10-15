@@ -19,6 +19,7 @@ movies.title = movies.title.str[:-7]
 movies.genres = movies.genres.str.split('|').tolist()
 movies = movies[movies.year <= 2016]
 
+
 def transform_title(title):
     title = re.sub(r"\(.*\)", "", title).strip()
 
@@ -47,8 +48,10 @@ for df in [movies, ratings, links]:
 def sample(count):
     return ratings.sample(count).merge(movies).merge(links).drop_duplicates(['movieId'])
 
+
 def get_movies_by_id(movieIds):
     return movies[movies.movieId.isin(movieIds)]
+
 
 def get_top_genres(movieIds):
     genres = []
@@ -59,11 +62,17 @@ def get_top_genres(movieIds):
     print(grouped)
     print(get_movies_by_id(movieIds))
 
+
 def get_names(movieIds):
     return get_movies_by_id(movieIds).title
 
+
 def get_escaped_names(movieIds):
     return [_escape(name) for name in get_names(movieIds)]
+
+def get_movies_iter():
+    return movies.iterrows()
+
 
 def _escape(name):
     return name.replace("'", "\\'")
