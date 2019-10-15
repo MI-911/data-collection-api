@@ -2,7 +2,11 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
-def get_soup(movie_id):
+def get_actor_soup(actor_id):
+    return BeautifulSoup(requests.get(f'https://imdb.com/name/nm{actor_id}').text, features='lxml', )
+
+
+def get_movie_soup(movie_id):
     return BeautifulSoup(requests.get(f'https://imdb.com/title/tt{movie_id}').text, features='lxml', )
 
 
@@ -25,12 +29,21 @@ def get_actors(soup):
 
     return actors
 
-def get_poster(soup):
+
+def get_movie_poster(soup):
     wrapper = soup.find('div', attrs={'class': 'poster'})
     if not wrapper:
         return None
 
     poster = wrapper.find('img')
+    if not poster:
+        return None
+
+    return poster['src']
+
+
+def get_actor_poster(soup):
+    poster = soup.find('img', attrs={'id': 'name-poster'})
     if not poster:
         return None
 

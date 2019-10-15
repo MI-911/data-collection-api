@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request
 from flask_cors import CORS
 
 import dataset
-from imdb import get_poster, get_soup, get_actors
+from imdb import get_movie_poster, get_movie_soup, get_actors
 from neo import get_related_entities
 
 app = Flask(__name__)
@@ -18,7 +18,7 @@ def begin():
         "title": sample['title'],
         "id": sample['movieId'],
         "year": sample['year'],
-        "poster": get_poster(str(sample['imdbId']).zfill(7))
+        "poster": get_movie_poster(str(sample['imdbId']).zfill(7))
     } for index, sample in samples[:10].iterrows()])
 
 
@@ -40,8 +40,8 @@ def main():
 
 
 if __name__ == "__main__":
-    soup = get_soup('0389790')
-    print(get_poster(soup))
+    soup = get_movie_soup('0389790')
+    print(get_movie_poster(soup))
     print(get_actors(soup))
     
     app.run()

@@ -1,5 +1,6 @@
 images/
 actors/
+actor_images/
 
 # Byte-compiled / optimized / DLL files
 py37-venv/
