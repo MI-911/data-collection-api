@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import re
 
+
 def get_actor_soup(actor_id):
     return BeautifulSoup(requests.get(f'https://imdb.com/name/nm{actor_id}').text, features='lxml', )
 
