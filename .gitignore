@@ -1,3 +1,6 @@
+images/
+actors/
+
 # Byte-compiled / optimized / DLL files
 py37-venv/
 __pycache__/
