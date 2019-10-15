@@ -21,6 +21,9 @@ def transform_title(title):
 
     if title.endswith(', The'):
         title = f'The {title[:-5]}'
+    
+    if title.endswith(', A'):
+        title = f'A {title[:-3]}'
 
     return title
 
