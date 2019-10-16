@@ -36,7 +36,8 @@ def entities():
     json = request.json
     liked = set(json['liked'])
     disliked = set(json['disliked'])
-    update_session(request, liked, disliked)
+    unknown = set(json['unknown'])
+    update_session(request, liked, disliked, unknown)
 
     # Only ask at max N_QESTIONS
     if len(get_seen_movies(request)) >= N_QUESTIONS: 
@@ -67,29 +68,24 @@ def main():
     return 'test'
 
 
-def update_session(request, liked, disliked): 
+def update_session(request, liked, disliked, unknown): 
     header = request.headers.get("Authorization")
     if header not in SESSION: 
         SESSION[header] = {
             'liked' :    [], 
-            'disliked' : []
+            'disliked' : [],
+            'unknown' :  []
         }
 
     SESSION[header]['liked'] += list(liked)
     SESSION[header]['disliked'] += list(disliked)
+    SESSION[header]['unknown'] += list(unknown)
 
 
 def get_seen_movies(request): 
     header = request.headers.get("Authorization")
-    return set(SESSION[header]['liked']).union(set(SESSION[header]['disliked']))
+    return SESSION[header]['liked'] + SESSION[header]['disliked'] + SESSION[header]['unknown']
 
-
-def add_movies_to_session(movies): 
-    if 'rated' not in session:
-        session['rated'] = [] 
-
-    if movies: 
-        session['rated'] = session['rated'] + list(movies)
 
 
 if __name__ == "__main__":
