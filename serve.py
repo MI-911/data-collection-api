@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
+from random import choice
 
 import dataset
 from neo import get_related_entities, get_one_hop_entities
@@ -36,10 +37,26 @@ def entities():
     disliked = set(json['disliked'])
     add_movies_to_session(liked.union(disliked))
 
-    dataset.get_top_genres(liked.union(disliked))
-    one_hop_movies = get_one_hop_entities('http://wikidata.dbpedia.org/resource/Q171048')
+    # Choose one seed from liked and disliked at random
+    liked_choice = choice(liked)
+    disliked_choice = choice(disliked)
 
-    return jsonify(one_hop_movies)
+    # Find the one-hop entities from the liked and disliked seeds
+    # TODO: Make sure that liked and disliked entries have a uri property (or are just URIs in themselves)
+    #       A URI could look like this for Toy Story: 'http://wikidata.dbpedia.org/resource/Q171048'
+    liked_one_hop_entities = get_one_hop_entities(liked_choice.uri)
+    disliked_one_hop_entities = get_one_hop_entities(disliked_choice.uri)
+
+    # Sample 2 entities from liked_one_hop_entities and disliked_one_hop_entities, respectively
+    liked_one_hop_entities = liked_one_hop_entities[:2]
+    disliked_one_hop_entities = disliked_one_hop_entities[:2]
+
+    # Sample 2 entities randomly from the KG 
+    # TODO: Do this properly
+    random_entities = disliked_one_hop_entities[:2]
+
+    # Return them all to obtain user feedback
+    return jsonify(liked_one_hop_entities + disliked_one_hop_entities + random_entities)
 
 
 
