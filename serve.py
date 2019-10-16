@@ -1,11 +1,11 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, session
 from flask_cors import CORS
-import flask_login
 
 import dataset
 from neo import get_related_entities
 
 app = Flask(__name__)
+app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 
@@ -20,6 +20,16 @@ def begin():
         "year": sample['year'],
         "imdb": str(sample['imdbId']).zfill(7)
     } for index, sample in samples[:10].iterrows()])
+
+
+@app.route('/api/rate')
+def rate(): 
+    # We store rated movies in sessions.
+    # At each turn of the game, rated movies are sent 
+    # as application/json and stored in the session.
+    # At any time, session['rated'] will show the already
+    # rated movies.
+    add_movies_to_session(request)
 
 
 @app.route('/api/entities', methods=['POST'])
@@ -37,6 +47,16 @@ def entities():
 @app.route('/api')
 def main():
     return 'test'
+
+
+def add_movies_to_session(request): 
+    movies = request.json 
+
+    if not 'rated' in session: 
+        session['rated'] = [] 
+
+    if movies: 
+        session['rated'] = session['rated'] + movies
 
 
 if __name__ == "__main__":
