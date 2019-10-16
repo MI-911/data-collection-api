@@ -18,16 +18,21 @@ def get_poster(movie):
     return send_from_directory('movie_images', f'{movie}.jpg')
 
 
-@app.route('/api/begin')
-def begin():
-    samples = dataset.sample(50)  # .sort_values(by='variance', ascending=False)
+def _get_samples():
+    samples = dataset.sample(100)  # .sort_values(by='variance', ascending=False)
+    samples = samples[~samples.uri.isin(get_seen_movies(request))]
 
-    return jsonify([{
+    return [{
         "name": f"{sample['title']} ({sample['year']})",
         "id": sample['movieId'],
         "resource": "movie",
         "uri": sample['uri']
-    } for index, sample in samples[:10].iterrows()])
+    } for index, sample in samples[:5].iterrows()]
+
+
+@app.route('/api/begin')
+def begin():
+    return jsonify(_get_samples())
 
 
 @app.route('/api/entities', methods=['POST'])
@@ -39,9 +44,9 @@ def entities():
     unknown = set(json['unknown'])
     update_session(request, liked, disliked, unknown)
 
-    # Only ask at max N_QESTIONS
-    if len(get_seen_movies(request)) >= N_QUESTIONS: 
-        return "Done"
+    # Only ask at max N_QUESTIONS
+    if len(get_seen_movies(request)) < N_QUESTIONS:
+        return jsonify(_get_samples())
 
     # Choose one seed from liked and disliked at random
     liked_choice = choice(list(liked))
@@ -62,7 +67,6 @@ def entities():
     return jsonify(liked_one_hop_entities + disliked_one_hop_entities + random_entities)
 
 
-
 @app.route('/api')
 def main():
     return 'test'
@@ -71,7 +75,7 @@ def main():
 def update_session(request, liked, disliked, unknown): 
     header = request.headers.get("Authorization")
     if header not in SESSION: 
-        SESSION[header] = {
+        SESSION[header] ={
             'liked' :    [], 
             'disliked' : [],
             'unknown' :  []
@@ -84,8 +88,11 @@ def update_session(request, liked, disliked, unknown):
 
 def get_seen_movies(request): 
     header = request.headers.get("Authorization")
-    return SESSION[header]['liked'] + SESSION[header]['disliked'] + SESSION[header]['unknown']
 
+    if header not in SESSION:
+        return []
+
+    return SESSION[header]['liked'] + SESSION[header]['disliked'] + SESSION[header]['unknown']
 
 
 if __name__ == "__main__":
