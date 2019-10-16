@@ -8,9 +8,27 @@ query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities]
         "ORDER BY score DESC LIMIT 50"
 
 
+
+
 def _get_related_entities(tx, entities):
     for record in tx.run(query.replace('%entities', entities)):
         print(record)
+
+
+def _get_one_hop_entities(tx, uri): 
+    query = "MATCH (m)-[]-(t)  WHERE m.uri = $uri RETURN t" 
+
+    return tx.run(query, uri=uri)
+
+
+def get_one_hop_entities(uri): 
+    uri = "bolt://52.136.231.143:7778"
+    driver = GraphDatabase.driver(uri, auth=("neo4j", "root123"))
+
+    with driver.session() as session:
+        res = session.read_transaction(_get_one_hop_entities, uri=uri)
+
+    return res.value()
 
 
 def get_related_entities(entities):
@@ -20,3 +38,5 @@ def get_related_entities(entities):
     with driver.session() as session:
         for record in session.run(query, entities=list(entities)):
             print(record)
+
+

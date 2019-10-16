@@ -9,9 +9,11 @@ app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 
+
 @app.route('/static/movie/<movie>')
 def get_poster(movie):
     return send_from_directory('movie_images', f'{movie}.jpg')
+
 
 
 @app.route('/api/begin')
@@ -26,6 +28,7 @@ def begin():
     } for index, sample in samples[:10].iterrows()])
 
 
+
 @app.route('/api/entities', methods=['POST'])
 def entities():
     json = request.json
@@ -37,6 +40,7 @@ def entities():
     print(get_related_entities(liked.union(disliked)))
 
     return 'test'
+
 
 
 @app.route('/api')
