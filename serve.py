@@ -26,16 +26,6 @@ def begin():
     } for index, sample in samples[:10].iterrows()])
 
 
-@app.route('/api/rate')
-def rate(): 
-    # We store rated movies in sessions.
-    # At each turn of the game, rated movies are sent 
-    # as application/json and stored in the session.
-    # At any time, session['rated'] will show the already
-    # rated movies.
-    add_movies_to_session(request)
-
-
 @app.route('/api/entities', methods=['POST'])
 def entities():
     json = request.json
