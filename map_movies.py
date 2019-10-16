@@ -7,7 +7,11 @@ from dataset import get_movies_iter
 def map_movies(path):
     mapping = {}
     saved = 0
+    i = 0
     for i, movie in get_movies_iter():
+        if i % 100 == 0:
+            print(i)
+
         res = get_dbmovies(movie.title, str(movie.year))
 
         if res:
@@ -19,7 +23,7 @@ def map_movies(path):
     keys = list(mapping.keys())
     values = list(mapping.values())
 
-    data = {'imdb_ids': keys, 'dbpedia_uri': values}
+    data = {'movielens_ids': keys, 'dbpedia_uri': values}
 
     df = pd.DataFrame.from_dict(data)
     df.to_csv(path)
