@@ -39,7 +39,7 @@ def entities():
     update_session(request, liked, disliked)
 
     # Only ask at max N_QESTIONS
-    if len(SESSION[request.headers.get("Authorization")]) >= N_QUESTIONS: 
+    if len(get_seen_movies(request)) >= N_QUESTIONS: 
         return "Done"
 
     # Choose one seed from liked and disliked at random
