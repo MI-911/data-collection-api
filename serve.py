@@ -10,11 +10,9 @@ app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 
-
 @app.route('/static/movie/<movie>')
 def get_poster(movie):
     return send_from_directory('movie_images', f'{movie}.jpg')
-
 
 
 @app.route('/api/begin')
@@ -25,9 +23,9 @@ def begin():
     return jsonify([{
         "name": f"{sample['title']} ({sample['year']})",
         "id": sample['movieId'],
-        "resource": "movie"
+        "resource": "movie",
+        "uri": sample['uri']
     } for index, sample in samples[:10].iterrows()])
-
 
 
 @app.route('/api/entities', methods=['POST'])
@@ -57,7 +55,6 @@ def entities():
 
     # Return them all to obtain user feedback
     return jsonify(liked_one_hop_entities + disliked_one_hop_entities + random_entities)
-
 
 
 @app.route('/api')

@@ -10,9 +10,10 @@ base_path = 'dataset'
 movies = pd.read_csv(f'{base_path}/movies.csv')
 ratings = pd.read_csv(f'{base_path}/ratings.csv')
 links = pd.read_csv(f'{base_path}/links.csv')
+mapping = pd.read_csv(f'{base_path}/mapping.csv')
 
 # Split title and year
-movies['year'] = movies.title.str.extract('\((\d{4})\)', expand=True)
+movies['year'] = movies.title.str.extract(r'\((\d{4})\)', expand=True)
 movies.dropna(inplace=True)
 movies.year = movies.year.astype(int)
 movies.title = movies.title.str[:-7]
@@ -38,6 +39,7 @@ movies.title = movies.title.map(transform_title)
 dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
 dftmp.columns = ['variance']
 movies = movies.merge(dftmp.dropna(), on='movieId')
+movies = movies.merge(mapping.dropna(), on='movieId')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
@@ -51,16 +53,6 @@ def sample(count):
 
 def get_movies_by_id(movie_ids):
     return movies[movies.movieId.isin(movie_ids)]
-
-
-def get_top_genres(movie_ids):
-    genres = []
-    for index, movie in get_movies_by_id(movie_ids).iterrows():
-        genres.extend(movie.genres)
-    
-    grouped = [(g[0], len(list(g[1]))) for g in itertools.groupby(sorted(genres))]
-    print(grouped)
-    print(get_movies_by_id(movie_ids))
 
 
 def get_names(movie_ids):

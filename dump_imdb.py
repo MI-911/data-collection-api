@@ -36,7 +36,7 @@ def get_actor_image_path(actor_id):
     return os.path.join(actor_images_directory, f'{actor_id}.jpg')
 
 
-def chunkify(lst,n):
+def split_into_chunks(lst, n):
     return [lst[i::n] for i in range(n)]
 
 
@@ -94,12 +94,12 @@ def handle_actor(actor_id):
 
 def handle_movie_chunk(chunk):
     succeeded = 0
-    for movieId, imdbId in chunk:
+    for movie_id, imdb_id in chunk:
         try:
-            if handle_movie(movieId, imdbId):
+            if handle_movie(movie_id, imdb_id):
                 succeeded += 1
         except Exception as e:
-            print(f'{movieId}/{imdbId} failed: {e}')
+            print(f'{movie_id}/{imdb_id} failed: {e}')
 
     return succeeded
 
@@ -116,6 +116,19 @@ def handle_actor_chunk(chunk):
     return succeeded
 
 
+def _handle_chunks(fn, chunks):
+    executor = ThreadPoolExecutor(max_workers=15)
+    futures = []
+    for chunk in chunks:
+        futures.append(executor.submit(fn, chunk))
+
+    sum_succeeded = 0
+    for future in futures:
+        sum_succeeded += future.result()
+
+    return sum_succeeded
+
+
 def dump_movies():
     movie_imdb = []
 
@@ -125,46 +138,19 @@ def dump_movies():
     print(f'Expected movies: {len(movie_imdb)}')
 
     # Partition into n groups
-    movie_imdb = chunkify(movie_imdb, 50)
-
-    executor = ThreadPoolExecutor(max_workers=15)
-    futures = []
-    for chunk in movie_imdb:
-        futures.append(executor.submit(handle_movie_chunk, chunk))
-
-    sum_succeeded = 0
-    for future in futures:
-        sum_succeeded += future.result()
+    movie_imdb = split_into_chunks(movie_imdb, 50)
     
-    print(f'Sum succeeded: {sum_succeeded}')
-
-
-def get_actor_ids():
-    actors = set()
-
-    for r, d, f in os.walk(actors_directory):
-        for file in f:
-            if '.json' in file:
-                with open(os.path.join(actors_directory, file), 'r') as fp:
-                    actors = actors.union(set(json.load(fp).keys()))
-
-    return actors
+    print(f'Sum succeeded: {_handle_chunks(handle_movie_chunk, movie_imdb)}')
 
 
 def dump_actors():
-    actors = chunkify(list(get_actor_ids()), 50)
+    actors = split_into_chunks(list(get_actor_ids()), 50)
 
-    executor = ThreadPoolExecutor(max_workers=15)
-    futures = []
-    for chunk in actors:
-        futures.append(executor.submit(handle_actor_chunk, chunk))
-
-    sum_succeeded = 0
-    for future in futures:
-        sum_succeeded += future.result()
-    
-    print(f'Sum succeeded: {sum_succeeded}')
+    print(f'Sum succeeded: {_handle_chunks(handle_actor_chunk, actors)}')
 
 
 if __name__ == "__main__":
-    dump_actors()
+    mapped = get_actor_id_map()
+    print(mapped)
+    with open('actors.json', 'w') as fp:
+        json.dump(mapped, fp)
