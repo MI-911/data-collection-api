@@ -10,6 +10,7 @@ app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 N_QUESTIONS = 50
+SESSION = {} 
 
 
 @app.route('/static/movie/<movie>')
@@ -20,7 +21,6 @@ def get_poster(movie):
 @app.route('/api/begin')
 def begin():
     samples = dataset.sample(50)  # .sort_values(by='variance', ascending=False)
-    print(samples)
 
     return jsonify([{
         "name": f"{sample['title']} ({sample['year']})",
@@ -32,10 +32,13 @@ def begin():
 
 @app.route('/api/entities', methods=['POST'])
 def entities():
+    
     json = request.json
     liked = set(json['liked'])
     disliked = set(json['disliked'])
     add_movies_to_session(liked.union(disliked))
+    print(session['rated'])
+    return 'HELLO'
 
     # Only ask at max N_QESTIONS
     if len(session['rated']) >= N_QUESTIONS: 
@@ -60,9 +63,27 @@ def entities():
     return jsonify(liked_one_hop_entities + disliked_one_hop_entities + random_entities)
 
 
+
 @app.route('/api')
 def main():
     return 'test'
+
+
+def update_session(request, liked, disliked): 
+    header = request.headers.get("Authorization")
+    if header not in SESSION: 
+        SESSION[header] = {
+            'liked' :    [], 
+            'disliked' : []
+        }
+
+    SESSION[header]['liked'] += list(liked)
+    SESSION[header]['disliked'] += list(disliked)
+
+
+def get_seen_movies(request): 
+    header = request.headers.get("Authorization")
+    return set(SESSION[header]['liked']).union(set(SESSION[header]['disliked']))
 
 
 def add_movies_to_session(movies): 
