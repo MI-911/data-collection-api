@@ -3,3 +3,5 @@ requests
 flask
 pandas
 neo4j
+flask_cors
+flask_login

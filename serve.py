@@ -1,5 +1,6 @@
 from flask import Flask, jsonify, request
 from flask_cors import CORS
+import flask_login
 
 import dataset
 from imdb import get_movie_poster, get_movie_soup, get_actors
@@ -45,3 +46,4 @@ if __name__ == "__main__":
     print(get_actors(soup))
     
     app.run()
+
