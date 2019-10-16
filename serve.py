@@ -11,7 +11,7 @@ cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 @app.route('/api/begin')
 def begin():
-    samples = dataset.sample(50).sort_values(by='variance', ascending=False)
+    samples = dataset.sample(50) # .sort_values(by='variance', ascending=False)
     print(samples)
 
     return jsonify([{

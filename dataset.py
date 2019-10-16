@@ -46,7 +46,7 @@ for df in [movies, ratings, links]:
 
 
 def sample(count):
-    return ratings.sample(count).merge(movies).merge(links).drop_duplicates(['movieId'])
+    return ratings.merge(movies).merge(links).sample(count).drop_duplicates(['movieId'])
 
 
 def get_movies_by_id(movieIds):
