@@ -49,31 +49,23 @@ def sample(count):
     return ratings.merge(movies).merge(links).sample(count).drop_duplicates(['movieId'])
 
 
-def get_movies_by_id(movieIds):
-    return movies[movies.movieId.isin(movieIds)]
+def get_movies_by_id(movie_ids):
+    return movies[movies.movieId.isin(movie_ids)]
 
 
-def get_top_genres(movieIds):
+def get_top_genres(movie_ids):
     genres = []
-    for index, movie in get_movies_by_id(movieIds).iterrows():
+    for index, movie in get_movies_by_id(movie_ids).iterrows():
         genres.extend(movie.genres)
     
     grouped = [(g[0], len(list(g[1]))) for g in itertools.groupby(sorted(genres))]
     print(grouped)
-    print(get_movies_by_id(movieIds))
+    print(get_movies_by_id(movie_ids))
 
 
-def get_names(movieIds):
-    return get_movies_by_id(movieIds).title
+def get_names(movie_ids):
+    return get_movies_by_id(movie_ids).title
 
-
-def get_escaped_names(movieIds):
-    return [_escape(name) for name in get_names(movieIds)]
 
 def get_movies_iter():
     return movies.iterrows()
-
-
-def _escape(name):
-    return name.replace("'", "\\'")
-
