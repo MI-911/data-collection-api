@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, request, session
+from flask import Flask, jsonify, request, send_from_directory, abort
 from flask_cors import CORS
 
 import dataset
@@ -9,6 +9,11 @@ app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 
+@app.route('/static/movie/<movie>')
+def get_poster(movie):
+    return send_from_directory('movie_images', f'{movie}.jpg')
+
+
 @app.route('/api/begin')
 def begin():
     samples = dataset.sample(50)  # .sort_values(by='variance', ascending=False)
@@ -17,8 +22,7 @@ def begin():
     return jsonify([{
         "title": sample['title'],
         "id": sample['movieId'],
-        "year": sample['year'],
-        "imdb": str(sample['imdbId']).zfill(7)
+        "year": sample['year']
     } for index, sample in samples[:10].iterrows()])
 
 
