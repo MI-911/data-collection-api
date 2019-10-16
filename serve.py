@@ -55,7 +55,7 @@ def main():
 
 
 def add_movies_to_session(movies): 
-    if not 'rated' in session: 
+    if 'rated' not in session:
         session['rated'] = [] 
 
     if movies: 
