@@ -9,6 +9,8 @@ app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+N_QUESTIONS = 50
+
 
 @app.route('/static/movie/<movie>')
 def get_poster(movie):
@@ -34,6 +36,10 @@ def entities():
     liked = set(json['liked'])
     disliked = set(json['disliked'])
     add_movies_to_session(liked.union(disliked))
+
+    # Only ask at max N_QESTIONS
+    if len(session['rated']) >= N_QUESTIONS: 
+        return "Done"
 
     # Choose one seed from liked and disliked at random
     liked_choice = choice(liked)
