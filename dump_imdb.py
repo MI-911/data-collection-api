@@ -143,19 +143,6 @@ def dump_movies():
     print(f'Sum succeeded: {_handle_chunks(handle_movie_chunk, movie_imdb)}')
 
 
-def get_actor_ids():
-    actors = set()
-
-    for r, d, f in os.walk(actors_directory):
-        for file in f:
-            if '.json' in file:
-                with open(os.path.join(actors_directory, file), 'r') as fp:
-                    movie_actors = json.load(fp)
-                    actors = actors.union(set(movie_actors.keys()))
-
-    return actors
-
-
 def dump_actors():
     actors = split_into_chunks(list(get_actor_ids()), 50)
 
@@ -163,4 +150,7 @@ def dump_actors():
 
 
 if __name__ == "__main__":
-    dump_actors()
+    mapped = get_actor_id_map()
+    print(mapped)
+    with open('actors.json', 'w') as fp:
+        json.dump(mapped, fp)

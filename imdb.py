@@ -1,6 +1,10 @@
+import json
+import os
 import requests
 from bs4 import BeautifulSoup
 import re
+from collections import Counter
+from dump_imdb import actors_directory
 
 
 def get_actor_soup(actor_id):
@@ -49,3 +53,44 @@ def get_actor_poster(soup):
         return None
 
     return poster['src']
+
+
+def get_actor_sets():
+    sets = []
+
+    for r, d, f in os.walk(actors_directory):
+        for file in f:
+            if '.json' in file:
+                with open(os.path.join(actors_directory, file), 'r') as fp:
+                    sets.append(json.load(fp))
+
+    return sets
+
+
+def get_actor_id_map():
+    names = set()
+    actor_sets = get_actor_sets()
+    actor_id = dict()
+
+    for actor_set in actor_sets:
+        names = names.union(set(actor_set.values()))
+
+    for name in names:
+        ids = []
+        for actor_set in actor_sets:
+            for key, value in actor_set.items():
+                if value == name:
+                    ids.append(key)
+
+        actor_id[name] = Counter(ids).most_common(1)[0][0]
+
+    return actor_id
+
+
+def get_actor_ids():
+    ids = set()
+
+    for actor_set in get_actor_sets():
+        ids = ids.union(set(actor_set.keys()))
+
+    return ids
