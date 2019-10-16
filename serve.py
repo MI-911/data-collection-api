@@ -36,12 +36,10 @@ def entities():
     json = request.json
     liked = set(json['liked'])
     disliked = set(json['disliked'])
-    add_movies_to_session(liked.union(disliked))
-    print(session['rated'])
-    return 'HELLO'
+    update_session(request, liked, disliked)
 
     # Only ask at max N_QESTIONS
-    if len(session['rated']) >= N_QUESTIONS: 
+    if len(SESSION[request.headers.get("Authorization")]) >= N_QUESTIONS: 
         return "Done"
 
     # Choose one seed from liked and disliked at random
