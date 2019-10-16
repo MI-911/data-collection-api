@@ -41,6 +41,7 @@ def entities():
     json = request.json
     liked = set(json['liked'])
     disliked = set(json['disliked'])
+    add_movies_to_session(liked.union(disliked))
 
     dataset.get_top_genres(liked.union(disliked))
     print(get_related_entities(liked.union(disliked)))
@@ -53,9 +54,7 @@ def main():
     return 'test'
 
 
-def add_movies_to_session(request): 
-    movies = request.json 
-
+def add_movies_to_session(movies): 
     if not 'rated' in session: 
         session['rated'] = [] 
 
