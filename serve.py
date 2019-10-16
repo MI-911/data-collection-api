@@ -20,9 +20,9 @@ def begin():
     print(samples)
 
     return jsonify([{
-        "title": sample['title'],
+        "name": f"{sample['title']} ({sample['year']})",
         "id": sample['movieId'],
-        "year": sample['year']
+        "resource": "movie"
     } for index, sample in samples[:10].iterrows()])
 
 
