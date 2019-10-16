@@ -42,8 +42,8 @@ def entities():
         return "Done"
 
     # Choose one seed from liked and disliked at random
-    liked_choice = choice(liked)
-    disliked_choice = choice(disliked)
+    liked_choice = choice(list(liked))
+    disliked_choice = choice(list(disliked))
 
     # Find the one-hop entities from the liked and disliked seeds
     liked_one_hop_entities = get_one_hop_entities(liked_choice)
@@ -53,7 +53,7 @@ def entities():
     # then sample 2 entities randomly from the KG 
     # TODO: Sample this properly - perhaps based on PageRank
     liked_one_hop_entities = sample(liked_one_hop_entities, 2)
-    disliked_one_hop_entities = sample(disliked_one_hop_entities, 2)   
+    disliked_one_hop_entities = sample(disliked_one_hop_entities, 2)
     random_entities = dataset.sample(2)
 
     # Return them all to obtain user feedback
@@ -70,7 +70,7 @@ def add_movies_to_session(movies):
         session['rated'] = [] 
 
     if movies: 
-        session['rated'] = session['rated'] + movies
+        session['rated'] = session['rated'] + list(movies)
 
 
 if __name__ == "__main__":
