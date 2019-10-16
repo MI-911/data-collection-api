@@ -22,13 +22,13 @@ def _get_one_hop_entities(tx, uri):
 
 
 def get_one_hop_entities(uri): 
-    uri = "bolt://52.136.231.143:7778"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "root123"))
+    _uri = "bolt://52.136.231.143:7778"
+    driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
     with driver.session() as session:
         res = session.read_transaction(_get_one_hop_entities, uri=uri)
 
-    return res.value()
+    return [_get_schema_label(n) for n in res.value()]
 
 
 def get_related_entities(entities):
@@ -40,3 +40,8 @@ def get_related_entities(entities):
             print(record)
 
 
+def _get_schema_label(node): 
+    if 'http://www.w3.org/2000/01/rdf-schema#label' in node._properties: 
+        return node._properties['http://www.w3.org/2000/01/rdf-schema#label']
+    else: 
+        return 'N/A'

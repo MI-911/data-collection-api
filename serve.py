@@ -2,7 +2,7 @@ from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
 
 import dataset
-from neo import get_related_entities
+from neo import get_related_entities, get_one_hop_entities
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -37,9 +37,9 @@ def entities():
     add_movies_to_session(liked.union(disliked))
 
     dataset.get_top_genres(liked.union(disliked))
-    print(get_related_entities(liked.union(disliked)))
+    one_hop_movies = get_one_hop_entities('http://wikidata.dbpedia.org/resource/Q171048')
 
-    return 'test'
+    return jsonify(one_hop_movies)
 
 
 
