@@ -94,8 +94,13 @@ def get_seen_movies(request):
 
     return SESSION[header]['liked'] + SESSION[header]['disliked'] + SESSION[header]['unknown']
 
+
 def get_rated_movies(request): 
     header = request.headers.get("Authorization")
+
+    if header not in SESSION: 
+        return []
+        
     return SESSION[header]['liked'] + SESSION[header]['disliked']
 
 
