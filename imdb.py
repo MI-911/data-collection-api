@@ -25,7 +25,7 @@ def get_actors(soup):
             if anchor:
                 image = anchor.find('img')
                 if image:
-                    identifier = re.search('\d+|$', anchor['href']).group()
+                    identifier = re.search(r'\d+|$', anchor['href']).group()
                     actors[identifier] = image['title']
 
     return actors
