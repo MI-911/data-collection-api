@@ -8,8 +8,8 @@ from concurrent.futures import ThreadPoolExecutor, wait
 
 csv_writer_lock = threading.Lock()
 merged = movies.merge(links, on='movieId')
-image_directory = 'images'
-actors_directory = 'actors'
+image_directory = 'movie_images'
+actors_directory = 'movie_actors'
 actor_images_directory = 'actor_images'
 
 if not os.path.exists(image_directory):

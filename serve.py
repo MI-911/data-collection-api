@@ -1,25 +1,32 @@
-from flask import Flask, jsonify, request
+from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
 
 import dataset
-from imdb import get_movie_poster, get_movie_soup, get_actors
 from neo import get_related_entities
 
 app = Flask(__name__)
+app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+
+
+@app.route('/static/movie/<movie>')
+def get_poster(movie):
+    return send_from_directory('movie_images', f'{movie}.jpg')
+
 
 
 @app.route('/api/begin')
 def begin():
-    samples = dataset.sample(50).sort_values(by='variance', ascending=False)
+    samples = dataset.sample(50)  # .sort_values(by='variance', ascending=False)
     print(samples)
 
     return jsonify([{
-        "title": sample['title'],
+        "name": f"{sample['title']} ({sample['year']})",
         "id": sample['movieId'],
-        "year": sample['year'],
-        "poster": get_movie_poster(str(sample['imdbId']).zfill(7))
+        "resource": "movie"
     } for index, sample in samples[:10].iterrows()])
+
 
 
 @app.route('/api/entities', methods=['POST'])
@@ -27,11 +34,13 @@ def entities():
     json = request.json
     liked = set(json['liked'])
     disliked = set(json['disliked'])
+    add_movies_to_session(liked.union(disliked))
 
     dataset.get_top_genres(liked.union(disliked))
-    print(get_related_entities(dataset.get_escaped_names(liked.union(disliked))))
+    print(get_related_entities(liked.union(disliked)))
 
     return 'test'
+
 
 
 @app.route('/api')
@@ -39,9 +48,14 @@ def main():
     return 'test'
 
 
+def add_movies_to_session(movies): 
+    if 'rated' not in session:
+        session['rated'] = [] 
+
+    if movies: 
+        session['rated'] = session['rated'] + movies
+
+
 if __name__ == "__main__":
-    soup = get_movie_soup('0389790')
-    print(get_movie_poster(soup))
-    print(get_actors(soup))
-    
     app.run()
+

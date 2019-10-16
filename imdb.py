@@ -4,11 +4,11 @@ import re
 
 
 def get_actor_soup(actor_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/name/nm{actor_id}').text, features='lxml', )
+    return BeautifulSoup(requests.get(f'https://imdb.com/name/nm{actor_id}').text, features='lxml')
 
 
 def get_movie_soup(movie_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/title/tt{movie_id}').text, features='lxml', )
+    return BeautifulSoup(requests.get(f'https://imdb.com/title/tt{movie_id}').text, features='lxml')
 
 
 def get_actors(soup):
@@ -25,7 +25,7 @@ def get_actors(soup):
             if anchor:
                 image = anchor.find('img')
                 if image:
-                    identifier = re.search('\d+|$', anchor['href']).group()
+                    identifier = re.search(r'\d+|$', anchor['href']).group()
                     actors[identifier] = image['title']
 
     return actors
