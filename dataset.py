@@ -10,6 +10,7 @@ base_path = 'dataset'
 movies = pd.read_csv(f'{base_path}/movies.csv')
 ratings = pd.read_csv(f'{base_path}/ratings.csv')
 links = pd.read_csv(f'{base_path}/links.csv')
+mapping = pd.read_csv(f'{base_path}/mapping.csv')
 
 # Split title and year
 movies['year'] = movies.title.str.extract(r'\((\d{4})\)', expand=True)
@@ -38,6 +39,7 @@ movies.title = movies.title.map(transform_title)
 dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
 dftmp.columns = ['variance']
 movies = movies.merge(dftmp.dropna(), on='movieId')
+movies = movies.merge(mapping.dropna(), on='movieId')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
