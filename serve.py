@@ -1,12 +1,15 @@
 from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
+from random import choice, sample
 
 import dataset
-from neo import get_related_entities
+from neo import get_related_entities, get_one_hop_entities
 
 app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
+
+N_QUESTIONS = 50
 
 
 @app.route('/static/movie/<movie>')
@@ -34,10 +37,27 @@ def entities():
     disliked = set(json['disliked'])
     add_movies_to_session(liked.union(disliked))
 
-    dataset.get_top_genres(liked.union(disliked))
-    print(get_related_entities(liked.union(disliked)))
+    # Only ask at max N_QESTIONS
+    if len(session['rated']) >= N_QUESTIONS: 
+        return "Done"
 
-    return 'test'
+    # Choose one seed from liked and disliked at random
+    liked_choice = choice(liked)
+    disliked_choice = choice(disliked)
+
+    # Find the one-hop entities from the liked and disliked seeds
+    liked_one_hop_entities = get_one_hop_entities(liked_choice)
+    disliked_one_hop_entities = get_one_hop_entities(disliked_choice)
+
+    # Sample 2 entities from liked_one_hop_entities and disliked_one_hop_entities, respectively,
+    # then sample 2 entities randomly from the KG 
+    # TODO: Sample this properly - perhaps based on PageRank
+    liked_one_hop_entities = sample(liked_one_hop_entities, 2)
+    disliked_one_hop_entities = sample(disliked_one_hop_entities, 2)   
+    random_entities = dataset.sample(2)
+
+    # Return them all to obtain user feedback
+    return jsonify(liked_one_hop_entities + disliked_one_hop_entities + random_entities)
 
 
 @app.route('/api')
