@@ -1,4 +1,4 @@
-,imdb_ids,dbpedia_uri
+,movieId,uri
 0,1,http://wikidata.dbpedia.org/resource/Q171048
 1,2,http://wikidata.dbpedia.org/resource/Q222939
 2,4,http://wikidata.dbpedia.org/resource/Q736254

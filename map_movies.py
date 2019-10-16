@@ -23,7 +23,7 @@ def map_movies(path):
     keys = list(mapping.keys())
     values = list(mapping.values())
 
-    data = {'movielens_ids': keys, 'dbpedia_uri': values}
+    data = {'movieId': keys, 'uri': values}
 
     df = pd.DataFrame.from_dict(data)
     df.to_csv(path)
