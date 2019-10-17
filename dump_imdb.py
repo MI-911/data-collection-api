@@ -54,22 +54,20 @@ def save_url_to_file(url, file):
             handle.write(block)
 
 
-def handle_movie(movieId, imdbId):
-    print(imdbId)
-
-    soup = get_movie_soup(imdbId)
+def handle_movie(movie_id, imdb_id):
+    soup = get_movie_soup(imdb_id)
 
     # Save poster
     image_url = get_image_path(soup)
     if image_url:
-        save_url_to_file(get_movie_poster(soup), get_image_path(movieId))
+        save_url_to_file(get_movie_poster(soup), get_image_path(movie_id))
     else:
         return False
 
     # Save list of actor ids
     actors = get_actors(soup)
     if actors and len(actors) > 0:
-        with open(get_actors_path(movieId), 'w') as outFile:
+        with open(get_actors_path(movie_id), 'w') as outFile:
             json.dump(actors, outFile)
     else:
         return False

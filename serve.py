@@ -1,3 +1,4 @@
+
 from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
 from random import choice, sample, shuffle
@@ -10,9 +11,14 @@ app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 N_QUESTIONS = 50
+MINIMUM_SEED_SIZE = 10
 SESSION = {} 
 N_QUESTIONS = 6
 N_ENTITIES = N_QUESTIONS // 3
+
+LIKED = 'liked'
+DISLIKED = 'disliked'
+UNKNOWN = 'unknown'
 
 
 @app.route('/static/movie/<movie>')
@@ -20,9 +26,14 @@ def get_poster(movie):
     return send_from_directory('movie_images', f'{movie}.jpg')
 
 
+@app.route('/static/actor>/<actor>')
+def get_profile(actor):
+    return send_from_directory('actor_images', f'{actor}.jpg')
+
+
 def _get_samples():
-    samples = dataset.sample(100)  # .sort_values(by='variance', ascending=False)
-    samples = samples[~samples.uri.isin(get_seen_entities(request))]
+    samples = dataset.sample(50, get_seen_movies())
+    samples = samples[~samples.uri.isin(get_seen_movies())]
 
     return [{
         "name": f"{sample['title']} ({sample['year']})",
@@ -41,10 +52,7 @@ def begin():
 def entities():
     
     json = request.json
-    liked = set(json['liked'])
-    disliked = set(json['disliked'])
-    unknown = set(json['unknown'])
-    update_session(request, liked, disliked, unknown)
+    update_session(set(json[LIKED]), set(json[DISLIKED]), set(json[UNKNOWN]))
 
     seen_entities = get_seen_entities(request)
 
@@ -69,39 +77,49 @@ def main():
     return 'test'
 
 
-def update_session(request, liked, disliked, unknown): 
-    header = request.headers.get("Authorization")
+def update_session(liked, disliked, unknown):
+    header = get_authorization()
     if header not in SESSION: 
-        SESSION[header] ={
-            'liked' :    [], 
-            'disliked' : [],
-            'unknown' :  []
+        SESSION[header] = {
+            LIKED:    [],
+            DISLIKED: [],
+            UNKNOWN:  []
         }
 
-    SESSION[header]['liked'] += list(liked)
-    SESSION[header]['disliked'] += list(disliked)
-    SESSION[header]['unknown'] += list(unknown)
+    SESSION[header][LIKED] += list(liked)
+    SESSION[header][DISLIKED] += list(disliked)
+    SESSION[header][UNKNOWN] += list(unknown)
+
+    print(f'Updating with:')
+    print(f'    Likes:    {liked}')
+    print(f'    Dislikes: {disliked}')
+    print()
+    print(f'Full history for this user: ')
+    print(f'    Likes:    {SESSION[header]["liked"]}')
+    print(f'    Dislikes: {SESSION[header]["disliked"]}')
 
 
-def get_seen_entities(request):
-    header = request.headers.get("Authorization")
+def get_seen_movies():
+    header = get_authorization()
 
     if header not in SESSION:
         return []
 
-    return SESSION[header]['liked'] + SESSION[header]['disliked'] + SESSION[header]['unknown']
+    return get_rated_movies() + SESSION[header][UNKNOWN]
 
 
-def get_rated_entities(request):
-    header = request.headers.get("Authorization")
+def get_rated_movies():
+    header = get_authorization()
 
     if header not in SESSION: 
         return []
         
-    return SESSION[header]['liked'] + SESSION[header]['disliked']
+    return SESSION[header][LIKED] + SESSION[header][DISLIKED]
 
+
+def get_authorization():
+    return request.headers.get("Authorization")
 
 
 if __name__ == "__main__":
     app.run()
-
