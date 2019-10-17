@@ -1,3 +1,4 @@
+import json
 import re
 
 import pandas as pd
@@ -5,6 +6,11 @@ from pandas import DataFrame
 import itertools
 
 base_path = 'dataset'
+
+# Load from JSON
+actors = dict()
+with open(f'{base_path}/actors.json', 'r') as fp:
+    actors = json.load(fp)
 
 # Load from CSV
 movies = pd.read_csv(f'{base_path}/movies.csv')
@@ -40,6 +46,7 @@ dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
 dftmp.columns = ['variance']
 movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies.merge(mapping.dropna(), on='movieId')
+movies = movies.merge(links.dropna(), on='movieId')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
@@ -47,8 +54,10 @@ for df in [movies, ratings, links]:
     df.reset_index(inplace=True, drop=True)
 
 
-def sample(count):
-    return ratings.merge(movies).merge(links).sample(count).drop_duplicates(['movieId'])
+def sample(count, exclude):
+    filtered_movies = movies[~movies.uri.isin(exclude)]
+
+    return ratings.merge(filtered_movies).sample(count).drop_duplicates(['movieId'])
 
 
 def get_movies_by_id(movie_ids):
@@ -61,3 +70,7 @@ def get_names(movie_ids):
 
 def get_movies_iter():
     return movies.iterrows()
+
+
+def get_actor_id(actor_name):
+    return actors.get(actor_name, None)
