@@ -60,6 +60,11 @@ def sample(count, exclude):
     return ratings.merge(filtered_movies).sample(count).drop_duplicates(['movieId'])
 
 
+def get_unseen(seen):
+    tmp = ratings.merge(movies).merge(links).drop_duplicates(['movieId'])["uri"]
+    return list(set(tmp) - set(seen))
+
+
 def get_movies_by_id(movie_ids):
     return movies[movies.movieId.isin(movie_ids)]
 
