@@ -1,9 +1,9 @@
 from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
-from random import choice, sample
+from random import choice, sample, shuffle
 
 import dataset
-from neo import get_related_entities, get_one_hop_entities, get_relevant_neighbors
+from neo import get_related_entities, get_one_hop_entities, get_relevant_neighbors, get_unseen_entities
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -11,6 +11,8 @@ cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 N_QUESTIONS = 50
 SESSION = {} 
+N_QUESTIONS = 6
+N_ENTITIES = N_QUESTIONS // 3
 
 
 @app.route('/static/movie/<movie>')
@@ -50,24 +52,16 @@ def entities():
     if len(seen_entities) < N_QUESTIONS:
         return jsonify(_get_samples())
 
-    # Choose one seed from liked and disliked at random
-    liked_choice = choice(list(liked))
-    disliked_choice = choice(list(disliked))
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant = get_relevant_neighbors(liked_choice)
-    disliked_relevant = get_relevant_neighbors(disliked_choice)
-
-
-    # Sample 2 entities from liked_relevant and disliked_relevant, respectively,
-    # then sample 2 entities randomly from the KG 
-    # TODO: Sample this properly - perhaps based on PageRank
-    liked_relevant = sample(liked_relevant, 2)
-    disliked_relevant = sample(disliked_relevant, 2)
-    random_entities = sample(dataset.get_unseen(seen_entities), 2)
+    liked_relevant = [n for n in get_relevant_neighbors(list(liked)) if n not in seen_entities][:N_ENTITIES]
+    disliked_relevant = [n for n in get_relevant_neighbors(list(disliked)) if n not in seen_entities and n not in liked_relevant][:N_ENTITIES]
+    random_entities = sample(get_unseen_entities(seen_entities + liked_relevant + disliked_relevant), N_ENTITIES)
 
     # Return them all to obtain user feedback
-    return jsonify(liked_relevant + disliked_relevant + random_entities)
+    entities = liked_relevant + disliked_relevant + random_entities
+    shuffle(entities)
+    return jsonify(entities)
 
 
 @app.route('/api')

@@ -7,7 +7,7 @@ query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities]
         "RETURN algo.asNode(nodeId).`http://xmlns.com/foaf/0.1/name` AS page,score "\
         "ORDER BY score DESC LIMIT 50"
 
-_uri = "bolt://52.136.231.143:7778"
+_uri = "bolt://172.19.2.123:7778"
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
@@ -43,11 +43,28 @@ def _get_schema_label(node):
         return 'N/A'
 
 
+def _get_unseen_entities(tx, uris): 
+    query = """ 
+        MATCH (m: MovieRelated) WHERE NOT m.uri IN $uris RETURN m.uri
+    """
+
+    return tx.run(query, uris=uris)
+
+
+def get_unseen_entities(uris): 
+    with driver.session() as session:
+        res = session.read_transaction(_get_unseen_entities, uris=uris)
+
+    return res.value()
+
+
 def get_relevant_neighbors(uri_list):
     with driver.session() as session:
-        res = session.read_transaction(get_relevant_neighbors, uri_list)
+        res = session.read_transaction(_get_relevant_neighbors, uri_list)
 
-    return [_get_schema_label(n) for n in res.value()]
+    relevant_uris = [n["uri"] for n in res.value()]
+
+    return relevant_uris
 
 
 def _get_relevant_neighbors(tx, uri_list):
@@ -66,5 +83,6 @@ def _get_relevant_neighbors(tx, uri_list):
 
 
 if __name__ == "__main__":
-    a = get_relevant_neighbors(['http://wikidata.dbpedia.org/resource/Q208108', 'http://wikidata.dbpedia.org/resource/Q241309'])
-    print('a')
+    a = get_unseen_entities([])
+    print('http://wikidata.dbpedia.org/resource/Q208108' not in a)
+    print('http://wikidata.dbpedia.org/resource/Q241309' not in a)
