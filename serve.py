@@ -3,7 +3,7 @@ from flask_cors import CORS
 from random import choice, sample
 
 import dataset
-from neo import get_related_entities, get_one_hop_entities
+from neo import get_related_entities, get_one_hop_entities, get_relevant_neighbors
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -20,7 +20,7 @@ def get_poster(movie):
 
 def _get_samples():
     samples = dataset.sample(100)  # .sort_values(by='variance', ascending=False)
-    samples = samples[~samples.uri.isin(get_seen_movies(request))]
+    samples = samples[~samples.uri.isin(get_seen_entities(request))]
 
     return [{
         "name": f"{sample['title']} ({sample['year']})",
@@ -44,27 +44,30 @@ def entities():
     unknown = set(json['unknown'])
     update_session(request, liked, disliked, unknown)
 
+    seen_entities = get_seen_entities(request)
+
     # Only ask at max N_QUESTIONS
-    if len(get_seen_movies(request)) < N_QUESTIONS:
+    if len(seen_entities) < N_QUESTIONS:
         return jsonify(_get_samples())
 
     # Choose one seed from liked and disliked at random
     liked_choice = choice(list(liked))
     disliked_choice = choice(list(disliked))
 
-    # Find the one-hop entities from the liked and disliked seeds
-    liked_one_hop_entities = get_one_hop_entities(liked_choice)
-    disliked_one_hop_entities = get_one_hop_entities(disliked_choice)
+    # Find the relevant neighbors (with page rank) from the liked and disliked seeds
+    liked_relevant = get_relevant_neighbors(liked_choice)
+    disliked_relevant = get_relevant_neighbors(disliked_choice)
 
-    # Sample 2 entities from liked_one_hop_entities and disliked_one_hop_entities, respectively,
+
+    # Sample 2 entities from liked_relevant and disliked_relevant, respectively,
     # then sample 2 entities randomly from the KG 
     # TODO: Sample this properly - perhaps based on PageRank
-    liked_one_hop_entities = sample(liked_one_hop_entities, 2)
-    disliked_one_hop_entities = sample(disliked_one_hop_entities, 2)
-    random_entities = dataset.sample(2)
+    liked_relevant = sample(liked_relevant, 2)
+    disliked_relevant = sample(disliked_relevant, 2)
+    random_entities = sample(dataset.get_unseen(seen_entities), 2)
 
     # Return them all to obtain user feedback
-    return jsonify(liked_one_hop_entities + disliked_one_hop_entities + random_entities)
+    return jsonify(liked_relevant + disliked_relevant + random_entities)
 
 
 @app.route('/api')
@@ -86,7 +89,7 @@ def update_session(request, liked, disliked, unknown):
     SESSION[header]['unknown'] += list(unknown)
 
 
-def get_seen_movies(request): 
+def get_seen_entities(request):
     header = request.headers.get("Authorization")
 
     if header not in SESSION:
@@ -95,7 +98,7 @@ def get_seen_movies(request):
     return SESSION[header]['liked'] + SESSION[header]['disliked'] + SESSION[header]['unknown']
 
 
-def get_rated_movies(request): 
+def get_rated_entities(request):
     header = request.headers.get("Authorization")
 
     if header not in SESSION: 

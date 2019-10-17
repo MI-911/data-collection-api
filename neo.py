@@ -47,7 +47,7 @@ def get_relevant_neighbors(uri_list):
     with driver.session() as session:
         res = session.read_transaction(get_relevant_neighbors, uri_list)
 
-    return res
+    return [_get_schema_label(n) for n in res.value()]
 
 
 def _get_relevant_neighbors(tx, uri_list):
@@ -63,3 +63,8 @@ def _get_relevant_neighbors(tx, uri_list):
         ORDER BY score DESC LIMIT 50"""
 
     return tx.run(q, uris=uri_list)
+
+
+if __name__ == "__main__":
+    a = get_relevant_neighbors(['http://wikidata.dbpedia.org/resource/Q208108', 'http://wikidata.dbpedia.org/resource/Q241309'])
+    print('a')
