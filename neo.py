@@ -7,6 +7,8 @@ query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities]
         "RETURN algo.asNode(nodeId).`http://xmlns.com/foaf/0.1/name` AS page,score "\
         "ORDER BY score DESC LIMIT 50"
 
+_uri = "bolt://52.136.231.143:7778"
+driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
 
@@ -21,10 +23,7 @@ def _get_one_hop_entities(tx, uri):
     return tx.run(query, uri=uri)
 
 
-def get_one_hop_entities(uri): 
-    _uri = "bolt://52.136.231.143:7778"
-    driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
-
+def get_one_hop_entities(uri):
     with driver.session() as session:
         res = session.read_transaction(_get_one_hop_entities, uri=uri)
 
@@ -32,9 +31,6 @@ def get_one_hop_entities(uri):
 
 
 def get_related_entities(entities):
-    uri = "bolt://52.136.231.143:7778"
-    driver = GraphDatabase.driver(uri, auth=("neo4j", "root123"))
-
     with driver.session() as session:
         for record in session.run(query, entities=list(entities)):
             print(record)
@@ -45,3 +41,25 @@ def _get_schema_label(node):
         return node._properties['http://www.w3.org/2000/01/rdf-schema#label']
     else: 
         return 'N/A'
+
+
+def get_relevant_neighbors(uri_list):
+    with driver.session() as session:
+        res = session.read_transaction(get_relevant_neighbors, uri_list)
+
+    return res
+
+
+def _get_relevant_neighbors(tx, uri_list):
+    q = """
+        MATCH (n:Movie) WHERE n.uri IN $uris WITH collect(n) AS movies
+        CALL algo.pageRank.stream(
+          'MovieRelated',
+          null,
+          {iterations: 50, dampingFactor: 0.95, sourceNodes: movies, direction: 'BOTH'}
+        )
+        YIELD nodeId, score
+        RETURN algo.asNode(nodeId) AS page, score
+        ORDER BY score DESC LIMIT 50"""
+
+    return tx.run(q, uris=uri_list)
