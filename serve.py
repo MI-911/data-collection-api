@@ -1,7 +1,7 @@
 from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
 from random import choice, sample
-
+import pandas
 import dataset
 from neo import get_related_entities, get_one_hop_entities
 
@@ -45,7 +45,7 @@ def entities():
     update_session(request, liked, disliked, unknown)
 
     # Only ask at max N_QUESTIONS
-    if len(get_seen_movies(request)) < N_QUESTIONS:
+    if len(get_rated_movies(request)) < N_QUESTIONS:
         return jsonify(_get_samples())
 
     # Choose one seed from liked and disliked at random
@@ -76,9 +76,9 @@ def update_session(request, liked, disliked, unknown):
     header = request.headers.get("Authorization")
     if header not in SESSION: 
         SESSION[header] ={
-            'liked' :    [], 
-            'disliked' : [],
-            'unknown' :  []
+            'liked':    [],
+            'disliked': [],
+            'unknown':  []
         }
 
     SESSION[header]['liked'] += list(liked)
@@ -102,7 +102,6 @@ def get_rated_movies(request):
         return []
         
     return SESSION[header]['liked'] + SESSION[header]['disliked']
-
 
 
 if __name__ == "__main__":

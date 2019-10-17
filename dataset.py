@@ -1,3 +1,4 @@
+import json
 import re
 
 import pandas as pd
@@ -5,6 +6,11 @@ from pandas import DataFrame
 import itertools
 
 base_path = 'dataset'
+
+# Load from JSON
+actors = dict()
+with open(f'{base_path}/actors.json', 'r') as fp:
+    actors = json.load(fp)
 
 # Load from CSV
 movies = pd.read_csv(f'{base_path}/movies.csv')
@@ -61,3 +67,7 @@ def get_names(movie_ids):
 
 def get_movies_iter():
     return movies.iterrows()
+
+
+def get_actor_id(actor_name):
+    return actors.get(actor_name, None)
