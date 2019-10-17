@@ -10,7 +10,7 @@ app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-N_QUESTIONS = 50
+MAX_QUESTIONS = 50
 MINIMUM_SEED_SIZE = 10
 SESSION = {} 
 N_QUESTIONS = 6
@@ -32,8 +32,8 @@ def get_profile(actor):
 
 
 def _get_samples():
-    samples = dataset.sample(50, get_seen_movies())
-    samples = samples[~samples.uri.isin(get_seen_movies())]
+    samples = dataset.sample(50, get_seen_entities())
+    samples = samples[~samples.uri.isin(get_seen_entities())]
 
     return [{
         "name": f"{sample['title']} ({sample['year']})",
@@ -54,16 +54,17 @@ def entities():
     json = request.json
     update_session(set(json[LIKED]), set(json[DISLIKED]), set(json[UNKNOWN]))
 
-    seen_entities = get_seen_entities(request)
+
+    seen_entities = get_seen_entities()
 
     # Only ask at max N_QUESTIONS
-    if len(seen_entities) < N_QUESTIONS:
-        return jsonify(_get_samples())
+    if len(seen_entities) >= MAX_QUESTIONS:
+        return "Done."  # TODO: PageRank over all likes and dislikes
 
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant = [n for n in get_relevant_neighbors(list(liked)) if n not in seen_entities][:N_ENTITIES]
-    disliked_relevant = [n for n in get_relevant_neighbors(list(disliked)) if n not in seen_entities and n not in liked_relevant][:N_ENTITIES]
+    liked_relevant = [n for n in get_relevant_neighbors(list(json[LIKED])) if n not in seen_entities][:N_ENTITIES]
+    disliked_relevant = [n for n in get_relevant_neighbors(list(json[DISLIKED])) if n not in seen_entities and n not in liked_relevant][:N_ENTITIES]
     random_entities = sample(get_unseen_entities(seen_entities + liked_relevant + disliked_relevant), N_ENTITIES)
 
     # Return them all to obtain user feedback
@@ -99,16 +100,16 @@ def update_session(liked, disliked, unknown):
     print(f'    Dislikes: {SESSION[header]["disliked"]}')
 
 
-def get_seen_movies():
+def get_seen_entities():
     header = get_authorization()
 
     if header not in SESSION:
         return []
 
-    return get_rated_movies() + SESSION[header][UNKNOWN]
+    return get_rated_entities() + SESSION[header][UNKNOWN]
 
 
-def get_rated_movies():
+def get_rated_entities():
     header = get_authorization()
 
     if header not in SESSION: 
