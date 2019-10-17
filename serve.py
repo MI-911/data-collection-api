@@ -24,6 +24,11 @@ def get_poster(movie):
     return send_from_directory('movie_images', f'{movie}.jpg')
 
 
+@app.route('/static/actor>/<actor>')
+def get_profile(actor):
+    return send_from_directory('actor_images', f'{actor}.jpg')
+
+
 def _get_samples():
     samples = dataset.sample(50, get_seen_movies())
     samples = samples[~samples.uri.isin(get_seen_movies())]
