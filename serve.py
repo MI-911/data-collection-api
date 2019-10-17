@@ -85,6 +85,14 @@ def update_session(request, liked, disliked, unknown):
     SESSION[header]['disliked'] += list(disliked)
     SESSION[header]['unknown'] += list(unknown)
 
+    print(f'Updating with:')
+    print(f'    Likes:    {liked}')
+    print(f'    Dislikes: {disliked}')
+    print()
+    print(f'Full history for this user: ')
+    print(f'    Likes:    {SESSION[header]["liked"]}')
+    print(f'    Dislikes: {SESSION[header]["disliked"]}')
+
 
 def get_seen_movies(request): 
     header = request.headers.get("Authorization")
