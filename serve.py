@@ -25,8 +25,7 @@ def get_poster(movie):
 
 
 def _get_samples():
-    samples = dataset.sample(200)  # .sort_values(by='variance', ascending=False)
-    print(get_rated_movies())
+    samples = dataset.sample(50, get_seen_movies())
     samples = samples[~samples.uri.isin(get_seen_movies())]
 
     return [{

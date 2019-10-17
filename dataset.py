@@ -46,6 +46,7 @@ dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
 dftmp.columns = ['variance']
 movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies.merge(mapping.dropna(), on='movieId')
+movies = movies.merge(links.dropna(), on='movieId')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
@@ -53,8 +54,10 @@ for df in [movies, ratings, links]:
     df.reset_index(inplace=True, drop=True)
 
 
-def sample(count):
-    return ratings.merge(movies).merge(links).sample(count).drop_duplicates(['movieId'])
+def sample(count, exclude):
+    filtered_movies = movies[~movies.uri.isin(exclude)]
+
+    return ratings.merge(filtered_movies).sample(count).drop_duplicates(['movieId'])
 
 
 def get_movies_by_id(movie_ids):
