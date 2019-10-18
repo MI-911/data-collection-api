@@ -65,8 +65,8 @@ def begin():
 
 @app.route('/api/entities', methods=['POST'])
 def feedback():
-    json = request.json
-    update_session(set(json[LIKED]), set(json[DISLIKED]), set(json[UNKNOWN]))
+    json_data = request.json
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
 
     seen_entities = get_seen_entities()
 
@@ -95,11 +95,11 @@ def main():
     return 'test'
 
 
-def get_next_entities(json, seen):
+def get_next_entities(json_data, seen):
     f = []
     with ThreadPoolExecutor(max_workers=3) as e:
-        f.append(e.submit(get_related_entities, list(json['liked']), seen))
-        f.append(e.submit(get_related_entities, list(json['disliked']), seen))
+        f.append(e.submit(get_related_entities, list(json_data['liked']), seen))
+        f.append(e.submit(get_related_entities, list(json_data['disliked']), seen))
         f.append(e.submit(get_unseen_entities, seen, N_QUESTIONS))
 
     wait(f)
