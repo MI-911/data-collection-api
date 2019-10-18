@@ -18,6 +18,11 @@ ratings = pd.read_csv(f'{base_path}/ratings.csv')
 links = pd.read_csv(f'{base_path}/links.csv')
 mapping = pd.read_csv(f'{base_path}/mapping.csv')
 
+# Get unique genres
+genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
+genres_unique = pd.DataFrame(genres_unique, columns=['genre'])
+genres_unique = genres_unique[~genres_unique.genre.str.contains('no genres listed')]
+
 # Split title and year
 movies['year'] = movies.title.str.extract(r'\((\d{4})\)', expand=True)
 movies.dropna(inplace=True)
@@ -57,6 +62,10 @@ movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 # Merge movies with mappings and links
 movies = movies.merge(mapping.dropna(), on='movieId')
 movies = movies.merge(links.dropna(), on='movieId')
+
+uris = movies.uri
+with open('test.txt', 'w') as fp:
+    fp.write(', '.join([f"'{x}'" for x in uris]))
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
