@@ -2,8 +2,7 @@
 from flask import Flask, jsonify, request, send_from_directory, abort, session
 from flask_cors import CORS
 from random import choice, sample, shuffle
-
-import dataset
+import json, os, dataset
 from neo import get_related_entities, get_one_hop_entities, get_relevant_neighbors, get_unseen_entities
 
 app = Flask(__name__)
@@ -19,6 +18,8 @@ N_ENTITIES = N_QUESTIONS // 3
 LIKED = 'liked'
 DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
+
+STORED_DATA_PATH = "dataset/user_responses.json"
 
 
 @app.route('/static/movie/<movie>')
@@ -49,11 +50,9 @@ def begin():
 
 
 @app.route('/api/entities', methods=['POST'])
-def entities():
-    
+def entities():    
     json = request.json
     update_session(set(json[LIKED]), set(json[DISLIKED]), set(json[UNKNOWN]))
-
 
     seen_entities = get_seen_entities()
 
@@ -79,25 +78,39 @@ def main():
 
 
 def update_session(liked, disliked, unknown):
-    header = get_authorization()
-    if header not in SESSION: 
-        SESSION[header] = {
-            LIKED:    [],
-            DISLIKED: [],
-            UNKNOWN:  []
-        }
+    SESSION = None
 
-    SESSION[header][LIKED] += list(liked)
-    SESSION[header][DISLIKED] += list(disliked)
-    SESSION[header][UNKNOWN] += list(unknown)
+    if not (os.path.exists(STORED_DATA_PATH) and os.path.isfile(STORED_DATA_PATH)): 
+        with open(STORED_DATA_PATH, 'w+') as fp: 
+            init = {'INIT' : []}
+            json.dump(init, fp)
 
-    print(f'Updating with:')
-    print(f'    Likes:    {liked}')
-    print(f'    Dislikes: {disliked}')
-    print()
-    print(f'Full history for this user: ')
-    print(f'    Likes:    {SESSION[header]["liked"]}')
-    print(f'    Dislikes: {SESSION[header]["disliked"]}')
+    with open(STORED_DATA_PATH) as fp: 
+        SESSION = json.load(fp)
+        header = get_authorization()
+
+        if header not in SESSION: 
+            SESSION[header] = {
+                LIKED:    [],
+                DISLIKED: [],
+                UNKNOWN:  []
+            }
+
+        SESSION[header][LIKED] += list(liked)
+        SESSION[header][DISLIKED] += list(disliked)
+        SESSION[header][UNKNOWN] += list(unknown)
+
+        print(f'Updating with:')
+        print(f'    Likes:    {liked}')
+        print(f'    Dislikes: {disliked}')
+        print()
+        print(f'Full history for this user: ')
+        print(f'    Likes:    {SESSION[header]["liked"]}')
+        print(f'    Dislikes: {SESSION[header]["disliked"]}')
+
+
+    with open(STORED_DATA_PATH, 'w+') as fp: 
+        json.dump(SESSION, fp, indent=True)
 
 
 def get_seen_entities():
