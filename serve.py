@@ -1,14 +1,10 @@
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor, wait
-from random import sample, shuffle
+from random import shuffle
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-
-from multiprocessing import Pool
-from itertools import product
-
-from random import choice, sample, shuffle
-import json, os, dataset
 
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities
@@ -77,7 +73,7 @@ def feedback():
         return "Done."  # TODO: PageRank over all likes and dislikes
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant, disliked_relevant, random_entities = get_next_entities(json, seen_entities)
+    liked_relevant, disliked_relevant, random_entities = get_next_entities(json_data, seen_entities)
 
     random_entities = [e for e in random_entities if e not in liked_relevant and e not in disliked_relevant][:N_ENTITIES]
 
