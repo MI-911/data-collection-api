@@ -45,6 +45,16 @@ movies.title = movies.title.map(transform_title)
 dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
 dftmp.columns = ['variance']
 movies = movies.merge(dftmp.dropna(), on='movieId')
+
+# Add count to movies
+dftmp = ratings[['movieId', 'rating']].groupby('movieId').count()
+dftmp.columns = ['numRatings']
+movies = movies.merge(dftmp.dropna(), on='movieId')
+
+# Remove movies with less than median ratings
+movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
+
+# Merge movies with mappings and links
 movies = movies.merge(mapping.dropna(), on='movieId')
 movies = movies.merge(links.dropna(), on='movieId')
 
