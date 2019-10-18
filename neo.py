@@ -11,7 +11,6 @@ _uri = "bolt://172.19.2.123:7778"
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
-
 def _get_related_entities(tx, entities):
     for record in tx.run(query.replace('%entities', entities)):
         print(record)
@@ -43,29 +42,34 @@ def _get_schema_label(node):
         return 'N/A'
 
 
-def _get_unseen_entities(tx, uris): 
+def _get_unseen_entities(tx, uris, limit):
     query = """ 
-        MATCH (m: MovieRelated) WHERE NOT m.uri IN $uris RETURN m.uri
+        MATCH (m: MovieRelated) WHERE NOT m.uri IN $uris 
+        WITH m, rand() AS number
+        RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
+               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
+        ORDER BY number
+        LIMIT $lim
     """
 
-    return tx.run(query, uris=uris)
+    return tx.run(query, uris=uris, lim=limit)
 
 
-def get_unseen_entities(uris): 
+def get_unseen_entities(uris, limit):
     with driver.session() as session:
-        res = session.read_transaction(_get_unseen_entities, uris=uris)
+        res = session.read_transaction(_get_unseen_entities, uris, limit)
+        res = [r for r in res]
 
-    return res.value()
+    return res
 
 
-def get_relevant_neighbors(uri_list):
+def get_relevant_neighbors(uri_list, seen_uri_list):
     with driver.session() as session:
-        res = session.read_transaction(_get_relevant_neighbors, uri_list)
+        res = session.read_transaction(_get_relevant_neighbors, uri_list, seen_uri_list)
+        res = [r for r in res]
 
-    relevant_uris = [n["uri"] for n in res.value()]
-
-    return relevant_uris
-
+    return res
+    
 
 def create_genre(genre, uri):
     with driver.session() as session:
@@ -84,13 +88,9 @@ def _get_relevant_neighbors(tx, uri_list):
           {iterations: 50, dampingFactor: 0.95, sourceNodes: movies, direction: 'BOTH'}
         )
         YIELD nodeId, score
-        RETURN algo.asNode(nodeId) AS page, score
+        MATCH (m) where id(m) = nodeId AND NOT m.uri in $seen AND NOT m:Movie
+        RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
+               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
         ORDER BY score DESC LIMIT 50"""
 
-    return tx.run(q, uris=uri_list)
-
-
-if __name__ == "__main__":
-    a = get_unseen_entities([])
-    print('http://wikidata.dbpedia.org/resource/Q208108' not in a)
-    print('http://wikidata.dbpedia.org/resource/Q241309' not in a)
+    return tx.run(q, uris=uri_list, seen=seen_uri_list)
