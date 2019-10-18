@@ -47,7 +47,7 @@ def _get_unseen_entities(tx, uris, limit):
         MATCH (m: MovieRelated) WHERE NOT m.uri IN $uris 
         WITH m, rand() AS number
         RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
-               m:Subject AS subject, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
+               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
         ORDER BY number
         LIMIT $lim
     """
@@ -69,28 +69,7 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
         res = [r for r in res]
 
     return res
-
-
-def sample_relevant_neighbours(entities, n_actors=None, n_directors=None, n_subjects=None): 
-    '''
-    Attempts to sample n_actors, n_directors and n_subjects from the entities. 
-    Returns an array of entities of size n_actors + n_directors + n_subjects.
-    If there are not enough of either type of entity, the remaining space is filled 
-    out with entities from the entity list, sampled in order of PageRank.  
-    '''
-    actors = [r for r in entities if r['actor']]
-    directors = [r for r in entities if ['director']]
-    subjects = [r for r in entities if ['subject']]
-
-    all_entities = actors[:n_actors] + directors[:n_directors] + subjects[n_subjects]
-    if len(all_entities) < n_actors + n_directors + n_subjects: 
-        to_add = (n_actors + n_directors + n_subjects) - len(all_entities)
-        not_added = [r for r in entities if r not in all_entities]
-        to_add += not_added[:to_add]
-
-    return all_entities
     
-
 
 def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
     q = """
@@ -101,13 +80,9 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
           {iterations: 50, dampingFactor: 0.95, sourceNodes: movies, direction: 'BOTH'}
         )
         YIELD nodeId, score
-        MATCH (m) where id(m) = nodeId AND NOT m.uri in $seen
+        MATCH (m) where id(m) = nodeId AND NOT m.uri in $seen AND NOT m:Movie
         RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
-               m:Subject AS subject, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
+               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
         ORDER BY score DESC LIMIT 50"""
 
     return tx.run(q, uris=uri_list, seen=seen_uri_list)
-
-
-if __name__ == "__main__":
-    pass

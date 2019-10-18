@@ -5,14 +5,15 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities, sample_relevant_neighbours
+from neo import get_relevant_neighbors, get_unseen_entities
+from sampling import sample_relevant_neighbours, record_to_entity
 
 app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MAX_QUESTIONS = 50
-MINIMUM_SEED_SIZE = 10
+MINIMUM_SEED_SIZE = 1
 SESSION = {} 
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
@@ -27,8 +28,10 @@ def get_poster(movie):
     return send_from_directory('movie_images', f'{movie}.jpg')
 
 
-@app.route('/static/actor>/<actor>')
+@app.route('/static/actor/<actor>')
 def get_profile(actor):
+    print(f'{actor} requested')
+
     return send_from_directory('actor_images', f'{actor}.jpg')
 
 
@@ -64,13 +67,15 @@ def entities():
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
     liked_relevant = get_relevant_neighbors(list(json[LIKED]), seen_entities)
-    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
+    liked_relevant_list = [record_to_entity(x) for x in sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)]
+    print(liked_relevant_list)
 
     disliked_relevant = get_relevant_neighbors(list(json[DISLIKED]), seen_entities + liked_relevant_list)
-    disliked_relevant_list = sample_relevant_neighbours(disliked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
+    disliked_relevant_list = [record_to_entity(x) for x in sample_relevant_neighbours(disliked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)]
+    print(disliked_relevant_list)
 
     random_entities = get_unseen_entities(seen_entities + liked_relevant_list + disliked_relevant_list, N_ENTITIES)
-    random_entities_list = [n for n in random_entities]
+    random_entities_list = [record_to_entity(n) for n in random_entities]
 
     # Return them all to obtain user feedback
     requested_entities = liked_relevant_list + disliked_relevant_list + random_entities_list
