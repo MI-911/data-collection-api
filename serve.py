@@ -1,9 +1,12 @@
 
-from flask import Flask, jsonify, request, send_from_directory, abort, session
+from random import sample, shuffle
+
+from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 from random import choice, sample, shuffle
 import json, os, dataset
-from neo import get_related_entities, get_one_hop_entities, get_relevant_neighbors, get_unseen_entities
+import dataset
+from neo import get_relevant_neighbors, get_unseen_entities
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -34,14 +37,13 @@ def get_profile(actor):
 
 def _get_samples():
     samples = dataset.sample(50, get_seen_entities())
-    samples = samples[~samples.uri.isin(get_seen_entities())]
 
     return [{
-        "name": f"{sample['title']} ({sample['year']})",
-        "id": sample['movieId'],
+        "name": f"{item['title']} ({item['year']})",
+        "id": item['movieId'],
         "resource": "movie",
-        "uri": sample['uri']
-    } for index, sample in samples[:5].iterrows()]
+        "uri": item['uri']
+    } for index, item in samples[:5].iterrows()]
 
 
 @app.route('/api/begin')
@@ -60,16 +62,16 @@ def entities():
     if len(seen_entities) >= MAX_QUESTIONS:
         return "Done."  # TODO: PageRank over all likes and dislikes
 
-
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
     liked_relevant = [n for n in get_relevant_neighbors(list(json[LIKED])) if n not in seen_entities][:N_ENTITIES]
     disliked_relevant = [n for n in get_relevant_neighbors(list(json[DISLIKED])) if n not in seen_entities and n not in liked_relevant][:N_ENTITIES]
     random_entities = sample(get_unseen_entities(seen_entities + liked_relevant + disliked_relevant), N_ENTITIES)
 
     # Return them all to obtain user feedback
-    entities = liked_relevant + disliked_relevant + random_entities
-    shuffle(entities)
-    return jsonify(entities)
+    requested_entities = liked_relevant + disliked_relevant + random_entities
+    shuffle(requested_entities)
+    
+    return jsonify(requested_entities)
 
 
 @app.route('/api')
