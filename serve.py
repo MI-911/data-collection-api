@@ -5,7 +5,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities
+from neo import get_relevant_neighbors, get_unseen_entities, sample_relevant_neighbours
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -14,7 +14,7 @@ cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 MAX_QUESTIONS = 50
 MINIMUM_SEED_SIZE = 10
 SESSION = {} 
-N_QUESTIONS = 6
+N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
 
 LIKED = 'liked'
@@ -60,14 +60,14 @@ def entities():
         return "Done."  # TODO: PageRank over all likes and dislikes
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant = get_relevant_neighbors(list(json[LIKED]), seen_entities)[:N_ENTITIES]
-    liked_relevant_list = [n['uri'] for n in liked_relevant]
+    liked_relevant = get_relevant_neighbors(list(json[LIKED]), seen_entities)
+    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
 
-    disliked_relevant = get_relevant_neighbors(list(json[DISLIKED]), seen_entities + liked_relevant_list)[:N_ENTITIES]
-    disliked_relevant_list = [n['uri'] for n in disliked_relevant]
+    disliked_relevant = get_relevant_neighbors(list(json[DISLIKED]), seen_entities + liked_relevant_list)
+    disliked_relevant_list = sample_relevant_neighbours(disliked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
 
     random_entities = get_unseen_entities(seen_entities + liked_relevant_list + disliked_relevant_list, N_ENTITIES)
-    random_entities_list = [n['uri'] for n in random_entities]
+    random_entities_list = [n for n in random_entities]
 
     # Return them all to obtain user feedback
     requested_entities = liked_relevant_list + disliked_relevant_list + random_entities_list
