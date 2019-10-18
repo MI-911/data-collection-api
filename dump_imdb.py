@@ -1,3 +1,5 @@
+from time import sleep
+
 from dataset import movies, links
 from imdb import *
 import os
@@ -76,15 +78,14 @@ def handle_movie(movie_id, imdb_id):
 
 
 def handle_actor(actor_id):
-    print(actor_id)
-
     soup = get_actor_soup(actor_id)
 
     # Save poster
-    image_url = get_actor_image_path(soup)
-    if image_url:
-        save_url_to_file(get_actor_poster(soup), get_actor_image_path(actor_id))
+    poster = get_actor_poster(soup)
+    if poster:
+        save_url_to_file(poster, get_actor_image_path(actor_id))
     else:
+        print(actor_id)
         return False
     
     return True
@@ -142,13 +143,17 @@ def dump_movies():
 
 
 def dump_actors():
-    actors = split_into_chunks(list(get_actor_ids()), 50)
+    actor_ids = get_actor_ids()
+    existing = set()
+
+    for r, d, f in os.walk(actor_images_directory):
+        for file in f:
+            existing.add(file.split('.')[0])
+
+    actors = split_into_chunks(list(actor_ids), 50)
 
     print(f'Sum succeeded: {_handle_chunks(handle_actor_chunk, actors)}')
 
 
 if __name__ == "__main__":
-    mapped = get_actor_id_map()
-    print(mapped)
-    with open('actors.json', 'w') as fp:
-        json.dump(mapped, fp)
+    dump_actors()

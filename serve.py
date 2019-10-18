@@ -7,7 +7,8 @@ from multiprocessing import Pool
 from itertools import product
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities, sample_relevant_neighbours
+from neo import get_relevant_neighbors, get_unseen_entities
+from sampling import sample_relevant_neighbours, record_to_entity
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -29,8 +30,10 @@ def get_poster(movie):
     return send_from_directory('movie_images', f'{movie}.jpg')
 
 
-@app.route('/static/actor>/<actor>')
+@app.route('/static/actor/<actor>')
 def get_profile(actor):
+    print(f'{actor} requested')
+
     return send_from_directory('actor_images', f'{actor}.jpg')
 
 
@@ -52,7 +55,7 @@ def begin():
 
 
 @app.route('/api/entities', methods=['POST'])
-def entities():
+def feedback():
     json = request.json
     update_session(set(json[LIKED]), set(json[DISLIKED]), set(json[UNKNOWN]))
 
@@ -75,7 +78,7 @@ def entities():
 
     print(len(requested_entities))
     
-    return jsonify(requested_entities)
+    return jsonify([record_to_entity(x) for x in requested_entities])
 
 
 @app.route('/api')
@@ -95,7 +98,7 @@ def get_next_entities(json, seen):
     return [element.result() for element in f]
 
 
-def get_related_entities(entities, seen_entities): 
+def get_related_entities(entities, seen_entities):
     liked_relevant = get_relevant_neighbors(entities, seen_entities)
     liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
     return liked_relevant_list
