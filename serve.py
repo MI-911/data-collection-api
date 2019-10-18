@@ -39,7 +39,8 @@ def _get_samples():
         "name": f"{item['title']} ({item['year']})",
         "id": item['movieId'],
         "resource": "movie",
-        "uri": item['uri']
+        "uri": item['uri'],
+        "description": "Movie"
     } for index, item in samples[:5].iterrows()]
 
 
@@ -56,7 +57,9 @@ def entities():
     seen_entities = get_seen_entities()
 
     # Only ask at max N_QUESTIONS
-    if len(seen_entities) >= MAX_QUESTIONS:
+    if len(get_rated_entities()) < MINIMUM_SEED_SIZE:
+        return jsonify(_get_samples())
+    elif len(seen_entities) >= MAX_QUESTIONS:
         return "Done."  # TODO: PageRank over all likes and dislikes
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
