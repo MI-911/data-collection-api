@@ -79,7 +79,7 @@ def create_genre(genre, uri):
         tx.commit()
 
 
-def _get_relevant_neighbors(tx, uri_list):
+def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
     q = """
         MATCH (n:Movie) WHERE n.uri IN $uris WITH collect(n) AS movies
         CALL algo.pageRank.stream(
