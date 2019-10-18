@@ -28,7 +28,10 @@ LIKED = 'liked'
 DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
 
-STORED_DATA_PATH = "dataset/user_responses.json"
+SESSION_PATH = 'sessions'
+
+if not os.path.exists(SESSION_PATH):
+    os.mkdir(SESSION_PATH)
 
 
 @app.route('/static/movie/<movie>')
@@ -111,38 +114,32 @@ def get_related_entities(entities, seen_entities):
 
 
 def update_session(liked, disliked, unknown):
-    SESSION = None
-
-    if not (os.path.exists(STORED_DATA_PATH) and os.path.isfile(STORED_DATA_PATH)): 
-        with open(STORED_DATA_PATH, 'w+') as fp: 
-            init = {'INIT' : []}
-            json.dump(init, fp)
-
-    with open(STORED_DATA_PATH) as fp: 
-        SESSION = json.load(fp)
-        header = get_authorization()
-
-        if header not in SESSION: 
+    header = get_authorization()
+    user_session_path = os.path.join('sessions', f'{header}.json')
+    if header not in SESSION:
+        if os.path.exists(user_session_path):
+            with open(user_session_path, 'r') as fp:
+                SESSION[header] = json.load(fp)
+        else:
             SESSION[header] = {
-                LIKED:    [],
+                LIKED: [],
                 DISLIKED: [],
-                UNKNOWN:  []
+                UNKNOWN: []
             }
 
-        SESSION[header][LIKED] += list(liked)
-        SESSION[header][DISLIKED] += list(disliked)
-        SESSION[header][UNKNOWN] += list(unknown)
+    SESSION[header][LIKED] += list(liked)
+    SESSION[header][DISLIKED] += list(disliked)
+    SESSION[header][UNKNOWN] += list(unknown)
 
-        print(f'Updating with:')
-        print(f'    Likes:    {liked}')
-        print(f'    Dislikes: {disliked}')
-        print()
-        print(f'Full history for this user: ')
-        print(f'    Likes:    {SESSION[header]["liked"]}')
-        print(f'    Dislikes: {SESSION[header]["disliked"]}')
+    print(f'Updating with:')
+    print(f'    Likes:    {liked}')
+    print(f'    Dislikes: {disliked}')
+    print()
+    print(f'Full history for this user: ')
+    print(f'    Likes:    {SESSION[header]["liked"]}')
+    print(f'    Dislikes: {SESSION[header]["disliked"]}')
 
-
-    with open(STORED_DATA_PATH, 'w+') as fp: 
+    with open(user_session_path, 'w+') as fp:
         json.dump(SESSION, fp, indent=True)
 
 
