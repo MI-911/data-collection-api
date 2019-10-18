@@ -71,7 +71,15 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
     return res
     
 
-def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
+def create_genre(genre, uri):
+    with driver.session() as session:
+        tx = session.begin_transaction()
+        tx.run("CREATE (n:Genre { `http://www.w3.org/2000/01/rdf-schema#label`: $genre, uri: $uri })",
+               genre=genre, uri=uri)
+        tx.commit()
+
+
+def _get_relevant_neighbors(tx, uri_list):
     q = """
         MATCH (n:Movie) WHERE n.uri IN $uris WITH collect(n) AS movies
         CALL algo.pageRank.stream(
