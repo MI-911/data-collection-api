@@ -42,19 +42,25 @@ def _get_schema_label(node):
         return 'N/A'
 
 
-def _get_unseen_entities(tx, uris): 
+def _get_unseen_entities(tx, uris, limit):
     query = """ 
-        MATCH (m: MovieRelated) WHERE NOT m.uri IN $uris RETURN m.uri
+        MATCH (m: MovieRelated) WHERE NOT m.uri IN $uris 
+        WITH m, rand() AS number
+        RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
+               m:Subject AS subject, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
+        ORDER BY number
+        LIMIT $lim
     """
 
-    return tx.run(query, uris=uris)
+    return tx.run(query, uris=uris, lim=limit)
 
 
-def get_unseen_entities(uris): 
+def get_unseen_entities(uris, limit):
     with driver.session() as session:
-        res = session.read_transaction(_get_unseen_entities, uris=uris)
+        res = session.read_transaction(_get_unseen_entities, uris, limit)
+        res = [r for r in res]
 
-    return res.value()
+    return res
 
 
 def get_relevant_neighbors(uri_list, seen_uri_list):

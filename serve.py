@@ -66,8 +66,7 @@ def entities():
     disliked_relevant = get_relevant_neighbors(list(json[DISLIKED]), seen_entities + liked_relevant_list)[:N_ENTITIES]
     disliked_relevant_list = [n['uri'] for n in disliked_relevant]
 
-    random_entities = sample(get_unseen_entities(seen_entities + liked_relevant_list + disliked_relevant_list),
-                             N_ENTITIES)
+    random_entities = get_unseen_entities(seen_entities + liked_relevant_list + disliked_relevant_list, N_ENTITIES)
 
     # Return them all to obtain user feedback
     requested_entities = liked_relevant_list + disliked_relevant_list + random_entities
