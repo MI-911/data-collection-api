@@ -67,9 +67,10 @@ def entities():
     disliked_relevant_list = [n['uri'] for n in disliked_relevant]
 
     random_entities = get_unseen_entities(seen_entities + liked_relevant_list + disliked_relevant_list, N_ENTITIES)
+    random_entities_list = [n['uri'] for n in random_entities]
 
     # Return them all to obtain user feedback
-    requested_entities = liked_relevant_list + disliked_relevant_list + random_entities
+    requested_entities = liked_relevant_list + disliked_relevant_list + random_entities_list
     shuffle(requested_entities)
 
     print(len(requested_entities))
