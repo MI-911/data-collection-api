@@ -115,7 +115,8 @@ def get_related_entities(entities, seen_entities):
 
 def update_session(liked, disliked, unknown):
     header = get_authorization()
-    user_session_path = os.path.join('sessions', f'{header}.json')
+    user_session_path = os.path.join(SESSION_PATH, f'{header}.json')
+
     if header not in SESSION:
         if os.path.exists(user_session_path):
             with open(user_session_path, 'r') as fp:
@@ -136,8 +137,8 @@ def update_session(liked, disliked, unknown):
     print(f'    Dislikes: {disliked}')
     print()
     print(f'Full history for this user: ')
-    print(f'    Likes:    {SESSION[header]["liked"]}')
-    print(f'    Dislikes: {SESSION[header]["disliked"]}')
+    print(f'    Likes:    {SESSION[header][LIKED]}')
+    print(f'    Dislikes: {SESSION[header][DISLIKED]}')
 
     with open(user_session_path, 'w+') as fp:
         json.dump(SESSION, fp, indent=True)
