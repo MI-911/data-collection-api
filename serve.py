@@ -33,7 +33,6 @@ def get_profile(actor):
 
 def _get_samples():
     samples = dataset.sample(50, get_seen_entities())
-    samples = samples[~samples.uri.isin(get_seen_entities())]
 
     return [{
         "name": f"{sample['title']} ({sample['year']})",
