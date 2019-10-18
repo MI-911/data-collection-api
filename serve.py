@@ -98,8 +98,8 @@ def main():
 def get_next_entities(json_data, seen):
     f = []
     with ThreadPoolExecutor(max_workers=3) as e:
-        f.append(e.submit(get_related_entities, list(json_data['liked']), seen))
-        f.append(e.submit(get_related_entities, list(json_data['disliked']), seen))
+        f.append(e.submit(get_related_entities, list(json_data[LIKED]), seen))
+        f.append(e.submit(get_related_entities, list(json_data[DISLIKED]), seen))
         f.append(e.submit(get_unseen_entities, seen, N_QUESTIONS))
 
     wait(f)
@@ -141,7 +141,7 @@ def update_session(liked, disliked, unknown):
     print(f'    Dislikes: {SESSION[header][DISLIKED]}')
 
     with open(user_session_path, 'w+') as fp:
-        json.dump(SESSION, fp, indent=True)
+        json.dump(SESSION[header], fp, indent=True)
 
 
 def get_seen_entities():
