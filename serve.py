@@ -3,6 +3,7 @@ from random import sample, shuffle
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
+from multiprocessing import Pool
 
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities, sample_relevant_neighbours
@@ -60,17 +61,13 @@ def entities():
         return "Done."  # TODO: PageRank over all likes and dislikes
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant = get_relevant_neighbors(list(json[LIKED]), seen_entities)
-    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
+    liked_relevant, disliked_relevant = get_next_entities(json)
 
-    disliked_relevant = get_relevant_neighbors(list(json[DISLIKED]), seen_entities + liked_relevant_list)
-    disliked_relevant_list = sample_relevant_neighbours(disliked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
-
-    random_entities = get_unseen_entities(seen_entities + liked_relevant_list + disliked_relevant_list, N_ENTITIES)
+    random_entities = get_unseen_entities(seen_entities + liked_relevant + disliked_relevant, N_ENTITIES)
     random_entities_list = [n for n in random_entities]
 
     # Return them all to obtain user feedback
-    requested_entities = liked_relevant_list + disliked_relevant_list + random_entities_list
+    requested_entities = liked_relevant + disliked_relevant + random_entities_list
     shuffle(requested_entities)
 
     print(len(requested_entities))
@@ -81,6 +78,18 @@ def entities():
 @app.route('/api')
 def main():
     return 'test'
+
+
+def get_next_entities(json): 
+    with Pool(5) as p: 
+        return p.map(get_related_entities, [list(json[LIKED]), list(json[DISLIKED])])
+
+
+def get_related_entities(entities, seen_entities): 
+    liked_relevant = get_relevant_neighbors(entities, seen_entities)
+    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
+    return liked_relevant_list
+
 
 
 def update_session(liked, disliked, unknown):
