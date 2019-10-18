@@ -91,7 +91,7 @@ def get_next_entities(json):
         return p.map(get_related_entities, [list(json[LIKED]), list(json[DISLIKED])])
 
 
-def get_related_entities(entities, seen_entities): 
+def get_related_entities(entities, seen_entities):
     liked_relevant = get_relevant_neighbors(entities, seen_entities)
     liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
     return liked_relevant_list
