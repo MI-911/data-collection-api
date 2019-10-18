@@ -60,13 +60,20 @@ def entities():
         return "Done."  # TODO: PageRank over all likes and dislikes
 
     # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant = [n for n in get_relevant_neighbors(list(json[LIKED])) if n not in seen_entities][:N_ENTITIES]
-    disliked_relevant = [n for n in get_relevant_neighbors(list(json[DISLIKED])) if n not in seen_entities and n not in liked_relevant][:N_ENTITIES]
-    random_entities = sample(get_unseen_entities(seen_entities + liked_relevant + disliked_relevant), N_ENTITIES)
+    liked_relevant = get_relevant_neighbors(list(json[LIKED]), seen_entities)[:N_ENTITIES]
+    liked_relevant_list = [n['uri'] for n in liked_relevant]
+
+    disliked_relevant = get_relevant_neighbors(list(json[DISLIKED]), seen_entities + liked_relevant_list)[:N_ENTITIES]
+    disliked_relevant_list = [n['uri'] for n in disliked_relevant]
+
+    random_entities = sample(get_unseen_entities(seen_entities + liked_relevant_list + disliked_relevant_list),
+                             N_ENTITIES)
 
     # Return them all to obtain user feedback
-    requested_entities = liked_relevant + disliked_relevant + random_entities
+    requested_entities = liked_relevant_list + disliked_relevant_list + random_entities
     shuffle(requested_entities)
+
+    print(len(requested_entities))
     
     return jsonify(requested_entities)
 
