@@ -99,7 +99,9 @@ def feedback():
     no_duplicates = []
     [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
 
-    return jsonify(requested_entities)
+    shuffle(no_duplicates)
+
+    return jsonify(no_duplicates)
 
 
 @app.route('/api')
