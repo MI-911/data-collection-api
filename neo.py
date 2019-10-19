@@ -44,12 +44,18 @@ def _get_schema_label(node):
 
 def _get_unseen_entities(tx, uris, limit):
     query = """ 
-        MATCH (m: MovieRelated) WHERE NOT m.uri IN $uris 
-        WITH m, rand() AS number
-        RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
-               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
-        ORDER BY number
-        LIMIT $lim
+    MATCH (m:MovieRelated)  WHERE NOT m.uri IN $uris
+    WITH id(m) as id, rand() AS number
+    ORDER BY number
+    LIMIT 1000
+    MATCH (m) WHERE id(m) = id with m, size((m)<--(:MovieRelated)) as c, number
+    WITH COLLECT({entity: m, count:c, number: number}) as data, count(c) as total
+    UNWIND data as d
+    WITH d.entity as m, d.number + (d.count / total) as score
+    RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
+           m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
+    ORDER BY score DESC
+    LIMIT $lim
     """
 
     return tx.run(query, uris=uris, lim=limit)

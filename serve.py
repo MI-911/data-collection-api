@@ -15,7 +15,7 @@ app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MAX_QUESTIONS = 50
-MINIMUM_SEED_SIZE = 1
+MINIMUM_SEED_SIZE = 10
 SESSION = {} 
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
@@ -66,24 +66,40 @@ def feedback():
 
     seen_entities = get_seen_entities()
 
+    rated_entities = get_rated_entities()
+
     # Only ask at max N_QUESTIONS
-    if len(get_rated_entities()) < MINIMUM_SEED_SIZE:
-        return jsonify(_get_samples())
-    elif len(seen_entities) >= MAX_QUESTIONS:
+    if len(seen_entities) >= MAX_QUESTIONS:
         return "Done."  # TODO: PageRank over all likes and dislikes
 
-    # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant, disliked_relevant, random_entities = get_next_entities(json_data, seen_entities)
+    parallel = []
+    num_rand = N_ENTITIES
+    if json_data[LIKED]:
+        parallel.append([get_related_entities, list(json_data[LIKED]), seen_entities])
+    else:
+        num_rand += N_ENTITIES
 
-    random_entities = [e for e in random_entities if e not in liked_relevant and e not in disliked_relevant][:N_ENTITIES]
+    if json_data[DISLIKED]:
+        parallel.append([get_related_entities, list(json_data[DISLIKED]), seen_entities])
+    else:
+        num_rand += N_ENTITIES
 
-    # Return them all to obtain user feedback
-    requested_entities = liked_relevant + disliked_relevant + random_entities
-    shuffle(requested_entities)
+    if len(rated_entities) < MINIMUM_SEED_SIZE:
+        # Find the relevant neighbors (with page rank) from the liked and disliked seeds
+        results = get_next_entities(parallel)
+        random_entities = _get_samples()[:num_rand]
+        requested_entities = [entity for result in results for entity in result]
+        result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
+    else:
+        parallel.append([get_unseen_entities, seen_entities, num_rand])
+        results = get_next_entities(parallel)
+        requested_entities = [entity for result in results for entity in result]
+        result_entities = [record_to_entity(x) for x in requested_entities]
 
-    print(len(requested_entities))
-    
-    return jsonify([record_to_entity(x) for x in requested_entities])
+    no_duplicates = []
+    [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
+
+    return jsonify(requested_entities)
 
 
 @app.route('/api')
@@ -91,12 +107,11 @@ def main():
     return 'test'
 
 
-def get_next_entities(json_data, seen):
+def get_next_entities(parallel):
     f = []
-    with ThreadPoolExecutor(max_workers=3) as e:
-        f.append(e.submit(get_related_entities, list(json_data[LIKED]), seen))
-        f.append(e.submit(get_related_entities, list(json_data[DISLIKED]), seen))
-        f.append(e.submit(get_unseen_entities, seen, N_QUESTIONS))
+    with ThreadPoolExecutor(max_workers=5) as e:
+        for args in parallel:
+            f.append(e.submit(*args))
 
     wait(f)
 
