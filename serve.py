@@ -1,14 +1,10 @@
+import json
+import os
 from concurrent.futures import ThreadPoolExecutor, wait
-from random import sample, shuffle
+from random import shuffle
 
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
-
-from multiprocessing import Pool
-from itertools import product
-
-from random import choice, sample, shuffle
-import json, os, dataset
 
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities
@@ -19,7 +15,7 @@ app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MAX_QUESTIONS = 50
-MINIMUM_SEED_SIZE = 1
+MINIMUM_SEED_SIZE = 10
 SESSION = {} 
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
@@ -28,7 +24,10 @@ LIKED = 'liked'
 DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
 
-STORED_DATA_PATH = "dataset/user_responses.json"
+SESSION_PATH = 'sessions'
+
+if not os.path.exists(SESSION_PATH):
+    os.mkdir(SESSION_PATH)
 
 
 @app.route('/static/movie/<movie>')
@@ -62,29 +61,47 @@ def begin():
 
 @app.route('/api/entities', methods=['POST'])
 def feedback():
-    json = request.json
-    update_session(set(json[LIKED]), set(json[DISLIKED]), set(json[UNKNOWN]))
+    json_data = request.json
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
 
     seen_entities = get_seen_entities()
 
+    rated_entities = get_rated_entities()
+
     # Only ask at max N_QUESTIONS
-    if len(get_rated_entities()) < MINIMUM_SEED_SIZE:
-        return jsonify(_get_samples())
-    elif len(seen_entities) >= MAX_QUESTIONS:
+    if len(seen_entities) >= MAX_QUESTIONS:
         return "Done."  # TODO: PageRank over all likes and dislikes
 
-    # Find the relevant neighbors (with page rank) from the liked and disliked seeds
-    liked_relevant, disliked_relevant, random_entities = get_next_entities(json, seen_entities)
+    parallel = []
+    num_rand = N_ENTITIES
+    if json_data[LIKED]:
+        parallel.append([get_related_entities, list(json_data[LIKED]), seen_entities])
+    else:
+        num_rand += N_ENTITIES
 
-    random_entities = [e for e in random_entities if e not in liked_relevant and e not in disliked_relevant][:N_ENTITIES]
+    if json_data[DISLIKED]:
+        parallel.append([get_related_entities, list(json_data[DISLIKED]), seen_entities])
+    else:
+        num_rand += N_ENTITIES
 
-    # Return them all to obtain user feedback
-    requested_entities = liked_relevant + disliked_relevant + random_entities
-    shuffle(requested_entities)
+    if len(rated_entities) < MINIMUM_SEED_SIZE:
+        # Find the relevant neighbors (with page rank) from the liked and disliked seeds
+        results = get_next_entities(parallel)
+        random_entities = _get_samples()[:num_rand]
+        requested_entities = [entity for result in results for entity in result]
+        result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
+    else:
+        parallel.append([get_unseen_entities, seen_entities, num_rand])
+        results = get_next_entities(parallel)
+        requested_entities = [entity for result in results for entity in result]
+        result_entities = [record_to_entity(x) for x in requested_entities]
 
-    print(len(requested_entities))
-    
-    return jsonify([record_to_entity(x) for x in requested_entities])
+    no_duplicates = []
+    [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
+
+    shuffle(no_duplicates)
+
+    return jsonify(no_duplicates)
 
 
 @app.route('/api')
@@ -92,12 +109,11 @@ def main():
     return 'test'
 
 
-def get_next_entities(json, seen):
+def get_next_entities(parallel):
     f = []
-    with ThreadPoolExecutor(max_workers=3) as e:
-        f.append(e.submit(get_related_entities, list(json['liked']), seen))
-        f.append(e.submit(get_related_entities, list(json['disliked']), seen))
-        f.append(e.submit(get_unseen_entities, seen, N_QUESTIONS))
+    with ThreadPoolExecutor(max_workers=5) as e:
+        for args in parallel:
+            f.append(e.submit(*args))
 
     wait(f)
 
@@ -111,39 +127,34 @@ def get_related_entities(entities, seen_entities):
 
 
 def update_session(liked, disliked, unknown):
-    SESSION = None
+    header = get_authorization()
+    user_session_path = os.path.join(SESSION_PATH, f'{header}.json')
 
-    if not (os.path.exists(STORED_DATA_PATH) and os.path.isfile(STORED_DATA_PATH)): 
-        with open(STORED_DATA_PATH, 'w+') as fp: 
-            init = {'INIT' : []}
-            json.dump(init, fp)
-
-    with open(STORED_DATA_PATH) as fp: 
-        SESSION = json.load(fp)
-        header = get_authorization()
-
-        if header not in SESSION: 
+    if header not in SESSION:
+        if os.path.exists(user_session_path):
+            with open(user_session_path, 'r') as fp:
+                SESSION[header] = json.load(fp)
+        else:
             SESSION[header] = {
-                LIKED:    [],
+                LIKED: [],
                 DISLIKED: [],
-                UNKNOWN:  []
+                UNKNOWN: []
             }
 
-        SESSION[header][LIKED] += list(liked)
-        SESSION[header][DISLIKED] += list(disliked)
-        SESSION[header][UNKNOWN] += list(unknown)
+    SESSION[header][LIKED] += list(liked)
+    SESSION[header][DISLIKED] += list(disliked)
+    SESSION[header][UNKNOWN] += list(unknown)
 
-        print(f'Updating with:')
-        print(f'    Likes:    {liked}')
-        print(f'    Dislikes: {disliked}')
-        print()
-        print(f'Full history for this user: ')
-        print(f'    Likes:    {SESSION[header]["liked"]}')
-        print(f'    Dislikes: {SESSION[header]["disliked"]}')
+    print(f'Updating with:')
+    print(f'    Likes:    {liked}')
+    print(f'    Dislikes: {disliked}')
+    print()
+    print(f'Full history for this user: ')
+    print(f'    Likes:    {SESSION[header][LIKED]}')
+    print(f'    Dislikes: {SESSION[header][DISLIKED]}')
 
-
-    with open(STORED_DATA_PATH, 'w+') as fp: 
-        json.dump(SESSION, fp, indent=True)
+    with open(user_session_path, 'w+') as fp:
+        json.dump(SESSION[header], fp, indent=True)
 
 
 def get_seen_entities():

@@ -52,10 +52,6 @@ def get_resource(record):
 def get_id(record):
     if _person(record):
         return get_actor_id(record['name'])
-    elif record['movie']:
-        match = movies.loc[movies.uri == record['uri']]
-        if not match.empty:
-            return match.iat[0]
 
     return None
 
