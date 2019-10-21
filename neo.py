@@ -25,7 +25,7 @@ def _get_last_batch(tx, source_uris, seen):
 def get_last_batch(source_uris, seen):
     with driver.session() as session:
         res = session.read_transaction(_get_one_hop_entities, source_uris, seen)
-        res = [r for r in res]
+        res = [r['uri'] for r in res]
 
     return res
 
