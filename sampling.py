@@ -31,7 +31,9 @@ def get_description(record):
     if record['subject']:
         titles.append('Subject')
     if record['movie']:
-        titles.append('Subject')
+        titles.append('Movie')
+    if record['genre']:
+        titles.append('Genre')
 
     return ', '.join(titles)
 

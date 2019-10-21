@@ -14,8 +14,8 @@ driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 def _get_last_batch(tx, source_uris, seen):
     query = """
         MATCH (m:MovieRelated)-[]-(o:Movie) WHERE m.uri IN $uris AND NOT o.uri IN $seen
-        RETURN o.uri AS uri, count(m) AS c
-        ORDER BY c DESC, o.pagerank DESC
+        RETURN o.pagerank AS pr, o.uri AS uri, count(m) AS c
+        ORDER BY c DESC, pr DESC
         LIMIT 10
     """
 
@@ -24,7 +24,7 @@ def _get_last_batch(tx, source_uris, seen):
 
 def get_last_batch(source_uris, seen):
     with driver.session() as session:
-        res = session.read_transaction(_get_one_hop_entities, source_uris, seen)
+        res = session.read_transaction(_get_last_batch, source_uris, seen)
         res = [r['uri'] for r in res]
 
     return res
@@ -72,7 +72,8 @@ def _get_unseen_entities(tx, uris, limit):
     UNWIND data as d
     WITH d.entity as m, d.number + (d.count / total) as score
     RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
-           m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
+           m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name,
+           m:Genre as genre
     ORDER BY score DESC
     LIMIT $lim
     """
@@ -115,7 +116,8 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
         YIELD nodeId, score
         MATCH (m) where id(m) = nodeId AND NOT m.uri in $seen AND NOT m:Movie
         RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
-               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name
+               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name,
+               m:Genre as genre
         ORDER BY score DESC LIMIT 50"""
 
     return tx.run(q, uris=uri_list, seen=seen_uri_list)
