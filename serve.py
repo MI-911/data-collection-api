@@ -7,7 +7,7 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities
+from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
 from sampling import sample_relevant_neighbours, record_to_entity
 
 app = Flask(__name__)
@@ -70,6 +70,15 @@ def feedback():
 
     # Only ask at max N_QUESTIONS
     if len(seen_entities) >= MAX_QUESTIONS:
+        liked = get_liked_entities()
+        disliked = get_disliked_entities()
+        parallel = []
+
+        parallel.append([get_last_batch, liked, seen_entities])
+        parallel.append([get_last_batch, disliked, seen_entities])
+
+        liked_res, disliked_res = get_next_entities(parallel)
+
         return "Done."  # TODO: PageRank over all likes and dislikes
 
     parallel = []
@@ -172,7 +181,23 @@ def get_rated_entities():
     if header not in SESSION: 
         return []
         
-    return SESSION[header][LIKED] + SESSION[header][DISLIKED]
+    return get_liked_entities + get_disliked_entities
+
+def get_liked_entities():
+    header = get_authorization()
+
+    if header not in SESSION: 
+        return []
+        
+    return SESSION[header][LIKED]
+
+def get_disliked_entities():
+    header = get_authorization()
+
+    if header not in SESSION: 
+        return []
+        
+    return SESSION[header][DISLIKED]
 
 
 def get_authorization():

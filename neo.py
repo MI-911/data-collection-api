@@ -13,7 +13,7 @@ driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 def _get_last_batch(tx, source_uris, seen):
     query = """
-        MATCH (m:MovieRelated)-[]-(o:Movie) WHERE m.uri IN $uris AND NOT m.uri IN $seen
+        MATCH (m:MovieRelated)-[]-(o:Movie) WHERE m.uri IN $uris AND NOT o.uri IN $seen
         RETURN o.uri AS uri, count(m) AS c
         ORDER BY c DESC, o.pagerank DESC
         LIMIT 10
