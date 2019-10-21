@@ -11,6 +11,25 @@ _uri = "bolt://172.19.2.123:7778"
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
+def _get_last_batch(tx, source_uris):
+    query = """
+        MATCH (m:MovieRelated)-[]-(o:Movie) where m.uri in $uris
+        return o.uri AS uri, count(m) as c
+        order by c desc, o.pagerank desc
+        limit 10
+    """
+
+    return tx.run(query, uris=source_uris)
+
+
+def get_last_batch(source_uris):
+    with driver.session() as session:
+        res = session.read_transaction(_get_one_hop_entities, source_uris)
+        res = [r for r in res]
+
+    return res
+
+
 def _get_related_entities(tx, entities):
     for record in tx.run(query.replace('%entities', entities)):
         print(record)
