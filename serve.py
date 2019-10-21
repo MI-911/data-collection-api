@@ -8,7 +8,7 @@ from flask_cors import CORS
 
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
-from sampling import sample_relevant_neighbours, record_to_entity
+from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -221,5 +221,4 @@ def get_authorization():
 
 
 if __name__ == "__main__":
-    print(_get_movie_uris())
     app.run()
