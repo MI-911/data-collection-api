@@ -63,10 +63,6 @@ movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 movies = movies.merge(mapping.dropna(), on='movieId')
 movies = movies.merge(links.dropna(), on='movieId')
 
-uris = movies.uri
-with open('test.txt', 'w') as fp:
-    fp.write(', '.join([f"'{x}'" for x in uris]))
-
 # Apply movieId as index
 for df in [movies, ratings, links]:
     df.sort_values(by='movieId', inplace=True)

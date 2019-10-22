@@ -230,3 +230,6 @@ def get_authorization():
 
 if __name__ == "__main__":
     app.run()
+else:
+    application = app  # For GUnicorn
+

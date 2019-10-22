@@ -1,5 +1,5 @@
 from neo4j import GraphDatabase
-
+from os import environ
 
 query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities] WITH collect(n) as movies "\
         "CALL algo.pageRank.stream('MovieRelated', 'http://wikidata.dbpedia.org/ontology/starring',"\
@@ -7,7 +7,7 @@ query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities]
         "RETURN algo.asNode(nodeId).`http://xmlns.com/foaf/0.1/name` AS page,score "\
         "ORDER BY score DESC LIMIT 50"
 
-_uri = "bolt://localhost:7778"
+_uri = environ.get('BOLT_URI', 'bolt://localhost:7778')
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
