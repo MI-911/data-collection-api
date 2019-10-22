@@ -7,7 +7,7 @@ query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities]
         "RETURN algo.asNode(nodeId).`http://xmlns.com/foaf/0.1/name` AS page,score "\
         "ORDER BY score DESC LIMIT 50"
 
-_uri = "bolt://172.19.2.123:7778"
+_uri = "bolt://localhost:7778"
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
