@@ -44,15 +44,19 @@ def get_profile(actor):
 
 def _get_samples():
     samples = dataset.sample(50, get_seen_entities())
+    return [_get_movie_from_row(row) for index, row in samples[:5].iterrows()]
 
-    return [{
-        "name": f"{item['title']} ({item['year']})",
-        "id": item['movieId'],
-        "resource": "movie",
-        "uri": item['uri'],
-        "description": "Movie"
-    } for index, item in samples[:5].iterrows()]
 
+def _get_movie_from_row(row):
+    res = {
+        'name' : f'{row["title"]} ({row["year"]})',
+        'id' : f'{row["movieId"]}',
+        'uri' : f'{row["uri"]}',
+        'resource' : "movie",
+        'description' : "Movie"
+    }
+    print(res)
+    return res
 
 @app.route('/api/begin')
 def begin():
@@ -94,8 +98,8 @@ def feedback():
 
         return jsonify({
             'prediction' : True, 
-            'likes' : liked_res, 
-            'dislikes' : disliked_res
+            'likes' : [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res], 
+            'dislikes' : [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
         })
 
     parallel = []
