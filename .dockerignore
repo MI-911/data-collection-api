@@ -1,0 +1,6 @@
+sessions/
+*venv/
+.*/
+movie_actors/
+actor_images/
+movie_images/
