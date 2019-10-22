@@ -129,12 +129,16 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
           'MovieRelated',
           null,
           {iterations: 50, dampingFactor: 0.95, sourceNodes: movies, direction: 'BOTH'}
-        )
-        YIELD nodeId, score
+        ) YIELD nodeId, score
         MATCH (m) where id(m) = nodeId AND NOT m.uri in $seen AND NOT m:Movie
-        RETURN m.`http://www.w3.org/2000/01/rdf-schema#label` AS label, m:Director AS director, m:Actor AS actor, 
-               m:Subject AS subject, m:Movie as movie, m.uri AS uri, m.`http://xmlns.com/foaf/0.1/name` AS name,
-               m:Genre as genre
-        ORDER BY score DESC LIMIT 50"""
+            WITH id(m) as id, score
+        ORDER BY score DESC LIMIT 50
+        MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
+            WITH r, m, score
+        ORDER BY score DESC, m.pagerank DESC
+            WITH r, collect(m)[..5] as movies, score
+        RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
+            r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
+            r:Genre as genre, movies, score"""
 
     return tx.run(q, uris=uri_list, seen=seen_uri_list)
