@@ -92,7 +92,7 @@ def feedback():
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
 
-        return jsoninfy({
+        return jsonify({
             'prediction' : True, 
             'likes' : liked_res, 
             'dislikes' : disliked_res
