@@ -48,15 +48,15 @@ def _get_samples():
 
 
 def _get_movie_from_row(row):
-    return {
-        "name": f"{row['title']} ({row['year']})",
-        "id": row['movieId'],
-        "resource": "movie",
-        "uri": row['uri'],
-        "description": "Movie"
+    res = {
+        'name' : f'{row["title"]} ({row["year"]})',
+        'id' : f'{row["movieId"]}',
+        'uri' : f'{row["uri"]}',
+        'resource' : "movie",
+        'description' : "Movie"
     }
-
-
+    print(res)
+    return res
 
 @app.route('/api/begin')
 def begin():
@@ -98,8 +98,8 @@ def feedback():
 
         return jsonify({
             'prediction' : True, 
-            'likes' : liked_res, 
-            'dislikes' : disliked_res
+            'likes' : [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res], 
+            'dislikes' : [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
         })
 
     parallel = []
