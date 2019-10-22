@@ -1,12 +1,6 @@
 from neo4j import GraphDatabase
 from os import environ
 
-query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities] WITH collect(n) as movies "\
-        "CALL algo.pageRank.stream('MovieRelated', 'http://wikidata.dbpedia.org/ontology/starring',"\
-        "{iterations: 300, dampingFactor: 0.85, sourceNodes: movies, direction: 'BOTH'}) YIELD nodeId, score "\
-        "RETURN algo.asNode(nodeId).`http://xmlns.com/foaf/0.1/name` AS page,score "\
-        "ORDER BY score DESC LIMIT 50"
-
 _uri = environ.get('BOLT_URI', 'bolt://localhost:7778')
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
@@ -43,11 +37,6 @@ def get_last_batch(source_uris, seen):
     return res
 
 
-def _get_related_entities(tx, entities):
-    for record in tx.run(query.replace('%entities', entities)):
-        print(record)
-
-
 def _get_one_hop_entities(tx, uri): 
     query = "MATCH (m)-[]-(t)  WHERE m.uri = $uri RETURN t" 
 
@@ -59,12 +48,6 @@ def get_one_hop_entities(uri):
         res = session.read_transaction(_get_one_hop_entities, uri=uri)
 
     return [_get_schema_label(n) for n in res.value()]
-
-
-def get_related_entities(entities):
-    with driver.session() as session:
-        for record in session.run(query, entities=list(entities)):
-            print(record)
 
 
 def _get_schema_label(node): 
