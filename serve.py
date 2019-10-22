@@ -7,14 +7,14 @@ from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities
-from sampling import sample_relevant_neighbours, record_to_entity
+from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
+from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 
 app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-MAX_QUESTIONS = 50
+MAX_QUESTIONS = 5
 MINIMUM_SEED_SIZE = 10
 SESSION = {} 
 N_QUESTIONS = 9
@@ -59,6 +59,16 @@ def begin():
     return jsonify(_get_samples())
 
 
+def _get_movie_uris():
+    return set(dataset.movies.uri)
+
+
+def _has_both_sentiments():
+    movie_uris = _get_movie_uris()
+
+    return set(get_liked_entities()).difference(movie_uris) and set(get_disliked_entities()).difference(movie_uris)
+
+
 @app.route('/api/entities', methods=['POST'])
 def feedback():
     json_data = request.json
@@ -69,8 +79,24 @@ def feedback():
     rated_entities = get_rated_entities()
 
     # Only ask at max N_QUESTIONS
-    if len(seen_entities) >= MAX_QUESTIONS:
-        return "Done."  # TODO: PageRank over all likes and dislikes
+    if len(seen_entities) >= MAX_QUESTIONS and _has_both_sentiments():
+        liked = get_liked_entities()
+        disliked = get_disliked_entities()
+        parallel = list()
+
+        parallel.append([get_last_batch, liked, seen_entities])
+        parallel.append([get_last_batch, disliked, seen_entities])
+
+        liked_res, disliked_res = get_next_entities(parallel)
+
+        print(f'l: {liked_res}')
+        print(f'd: {disliked_res}')
+
+        return jsonify({
+            'prediction' : True, 
+            'likes' : liked_res, 
+            'dislikes' : disliked_res
+        })
 
     parallel = []
     num_rand = N_ENTITIES
@@ -85,6 +111,7 @@ def feedback():
         num_rand += N_ENTITIES
 
     if len(rated_entities) < MINIMUM_SEED_SIZE:
+
         # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
         random_entities = _get_samples()[:num_rand]
@@ -172,7 +199,25 @@ def get_rated_entities():
     if header not in SESSION: 
         return []
         
-    return SESSION[header][LIKED] + SESSION[header][DISLIKED]
+    return get_liked_entities() + get_disliked_entities()
+
+
+def get_liked_entities():
+    header = get_authorization()
+
+    if header not in SESSION: 
+        return []
+        
+    return SESSION[header][LIKED]
+
+
+def get_disliked_entities():
+    header = get_authorization()
+
+    if header not in SESSION: 
+        return []
+        
+    return SESSION[header][DISLIKED]
 
 
 def get_authorization():

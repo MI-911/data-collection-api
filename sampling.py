@@ -31,7 +31,9 @@ def get_description(record):
     if record['subject']:
         titles.append('Subject')
     if record['movie']:
-        titles.append('Subject')
+        titles.append('Movie')
+    if record['genre']:
+        titles.append('Genre')
 
     return ', '.join(titles)
 
@@ -52,6 +54,8 @@ def get_resource(record):
 def get_id(record):
     if _person(record):
         return get_actor_id(record['name'])
+    elif record['movie']:
+        return _movie_from_uri(record['uri']['movieId'])
 
     return None
 
@@ -64,3 +68,7 @@ def record_to_entity(record):
         "uri": record['uri'],
         "description": get_description(record)
     }
+
+
+def _movie_from_uri(uri):
+    return movies.loc[movies['uri'] == uri]
