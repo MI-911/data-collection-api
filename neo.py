@@ -17,7 +17,7 @@ def _get_last_batch(tx, source_uris, seen):
         MATCH (r:MovieRelated)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
             WITH movies, m.uri AS uri, m.pagerank AS pr,  count(r) AS connected
             WITH movies, collect({uri: uri, pr: pr, c: connected}) AS movies2, sum(connected) AS total
-            UNWIND movies as m
+            UNWIND movies2 as m
             WITH movies + collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
         UNWIND movies AS movie
             WITH movie.uri AS uri, movie.pr AS pr, movie.c AS c
