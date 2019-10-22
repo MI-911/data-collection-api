@@ -72,7 +72,7 @@ def _get_unseen_entities(tx, uris, limit):
     MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
         WITH r, m, score
     ORDER BY score DESC, m.pagerank DESC
-        WITH r, collect(m)[..5] as movies, score
+        WITH r, collect(DISTINCT m)[..5] as movies, score
     RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
         r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
         r:Genre as genre, movies, score
@@ -119,7 +119,7 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
         MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
             WITH r, m, score
         ORDER BY score DESC, m.pagerank DESC
-            WITH r, collect(m)[..5] as movies, score
+            WITH r, collect(DISTINCT m)[..5] as movies, score
         RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
             r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
             r:Genre as genre, movies, score"""

@@ -67,7 +67,7 @@ def record_to_entity(record):
         "resource": get_resource(record),
         "uri": record['uri'],
         "description": get_description(record),
-        "movies:": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
+        "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
 
 def _movie_from_uri(uri):
