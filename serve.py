@@ -92,7 +92,11 @@ def feedback():
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
 
-        return "Done."  # TODO: PageRank over all likes and dislikes
+        return jsoninfy({
+            'prediction' : True, 
+            'likes' : liked_res, 
+            'dislikes' : disliked_res
+        })
 
     parallel = []
     num_rand = N_ENTITIES
