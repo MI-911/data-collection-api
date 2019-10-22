@@ -44,14 +44,18 @@ def get_profile(actor):
 
 def _get_samples():
     samples = dataset.sample(50, get_seen_entities())
+    return [_get_movie_from_row(row) for index, row in samples[:5].iterrows()]
 
-    return [{
-        "name": f"{item['title']} ({item['year']})",
-        "id": item['movieId'],
+
+def _get_movie_from_row(row):
+    return {
+        "name": f"{row['title']} ({row['year']})",
+        "id": row['movieId'],
         "resource": "movie",
-        "uri": item['uri'],
+        "uri": row['uri'],
         "description": "Movie"
-    } for index, item in samples[:5].iterrows()]
+    }
+
 
 
 @app.route('/api/begin')
