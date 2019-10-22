@@ -66,13 +66,13 @@ def record_to_entity(record):
         "id": get_id(record),
         "resource": get_resource(record),
         "uri": record['uri'],
-        "description": get_description(record)
+        "description": get_description(record),
+        "movies:": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
 
-
 def _movie_from_uri(uri):
-    row = movies.loc[movies['uri'] == uri, movies.columns].values
+    row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
     return {
         attr : val 
-        for attr, val in zip(movies.columns, row[0])
+        for attr, val in zip(movies.columns, next(row, []))
     }
