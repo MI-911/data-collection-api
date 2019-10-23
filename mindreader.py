@@ -6,6 +6,7 @@ from random import shuffle
 from flask import Flask, jsonify, request, send_from_directory
 from flask_cors import CORS
 
+import time
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
@@ -23,6 +24,7 @@ N_ENTITIES = N_QUESTIONS // 3
 LIKED = 'liked'
 DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
+TIMESTAMPS = 'timestamps'
 
 SESSION_PATH = 'sessions'
 
@@ -58,8 +60,12 @@ def _get_movie_from_row(row):
     }
     return res
 
-@app.route('/api/begin')
-def begin():
+
+@app.route('/api/movies')
+def movies():
+    # Initializes an empty but timestamped session
+    update_session([], [], [])
+    
     return jsonify(_get_samples())
 
 
@@ -73,7 +79,7 @@ def _has_both_sentiments():
     return set(get_liked_entities()).difference(movie_uris) and set(get_disliked_entities()).difference(movie_uris)
 
 
-@app.route('/api/entities', methods=['POST'])
+@app.route('/api/feedback', methods=['POST'])
 def feedback():
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
@@ -97,9 +103,9 @@ def feedback():
         print(f'd: {disliked_res}')
 
         return jsonify({
-            'prediction' : True, 
-            'likes' : [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res], 
-            'dislikes' : [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
+            'prediction': True, 
+            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res], 
+            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
         })
 
     parallel = []
@@ -157,9 +163,12 @@ def get_related_entities(entities, seen_entities):
     return liked_relevant_list
 
 
+def get_session_path(header):
+    return os.path.join(SESSION_PATH, f'{header}.json')
+
 def update_session(liked, disliked, unknown):
     header = get_authorization()
-    user_session_path = os.path.join(SESSION_PATH, f'{header}.json')
+    user_session_path = get_session_path(header)
 
     if header not in SESSION:
         if os.path.exists(user_session_path):
@@ -169,9 +178,11 @@ def update_session(liked, disliked, unknown):
             SESSION[header] = {
                 LIKED: [],
                 DISLIKED: [],
-                UNKNOWN: []
+                UNKNOWN: [],
+                TIMESTAMPS: []
             }
 
+    SESSION[header][TIMESTAMPS] += [time.time()]
     SESSION[header][LIKED] += list(liked)
     SESSION[header][DISLIKED] += list(disliked)
     SESSION[header][UNKNOWN] += list(unknown)
