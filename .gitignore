@@ -1,6 +1,7 @@
 movie_images/
 movie_actors/
 actor_images/
+data/movielens
 
 # Byte-compiled / optimized / DLL files
 py37-venv/
