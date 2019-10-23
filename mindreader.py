@@ -53,9 +53,9 @@ def _get_movie_from_row(row):
         'id' : f'{row["movieId"]}',
         'uri' : f'{row["uri"]}',
         'resource' : "movie",
-        'description' : "Movie"
+        'description' : "Movie",
+        'movies': []
     }
-    print(res)
     return res
 
 @app.route('/api/begin')
@@ -230,3 +230,6 @@ def get_authorization():
 
 if __name__ == "__main__":
     app.run()
+else:
+    application = app  # For GUnicorn
+

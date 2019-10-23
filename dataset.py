@@ -1,22 +1,22 @@
 import json
+import os
 import re
 
 import pandas as pd
 from pandas import DataFrame
 import itertools
 
-base_path = 'dataset'
+data_path = 'data'
+ml_path = os.path.join(data_path, 'movielens')
 
 # Load from JSON
-actors = dict()
-with open(f'{base_path}/actors.json', 'r') as fp:
-    actors = json.load(fp)
+actors = json.load(open(f'{data_path}/actors.json', 'r'))
 
 # Load from CSV
-movies = pd.read_csv(f'{base_path}/movies.csv')
-ratings = pd.read_csv(f'{base_path}/ratings.csv')
-links = pd.read_csv(f'{base_path}/links.csv')
-mapping = pd.read_csv(f'{base_path}/mapping.csv')
+movies = pd.read_csv(f'{ml_path}/movies.csv')
+ratings = pd.read_csv(f'{ml_path}/ratings.csv')
+links = pd.read_csv(f'{ml_path}/links.csv')
+mapping = pd.read_csv(f'{ml_path}/mapping.csv')
 
 # Get unique genres
 genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
@@ -32,16 +32,29 @@ movies.genres = movies.genres.str.split('|').tolist()
 movies = movies[movies.year <= 2016]
 
 
-def transform_title(title):
-    title = re.sub(r"\(.*\)", "", title).strip()
-
-    if title.endswith(', The'):
-        title = f'The {title[:-5]}'
-    
-    if title.endswith(', A'):
-        title = f'A {title[:-3]}'
+def _replace_ends_with(title, substr):
+    if title.endswith(f', {substr}'):
+        return f'{substr} {title[:-(2 + len(substr))]}'
 
     return title
+
+
+def transform_title(title):
+    title = re.sub(r'\(.*\)', "", title).strip()
+
+    title = _replace_ends_with(title, 'The')
+    title = _replace_ends_with(title, 'A')
+    title = _replace_ends_with(title, 'Les')
+    title = _replace_ends_with(title, 'Le')
+    title = _replace_ends_with(title, 'La')
+    title = _replace_ends_with(title, 'El')
+    title = _replace_ends_with(title, 'Die')
+    title = _replace_ends_with(title, 'Der')
+    title = _replace_ends_with(title, 'Das')
+    title = _replace_ends_with(title, 'Il')
+    title = _replace_ends_with(title, 'Los')
+
+    return title.strip()
 
 
 movies.title = movies.title.map(transform_title)
@@ -62,10 +75,6 @@ movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 # Merge movies with mappings and links
 movies = movies.merge(mapping.dropna(), on='movieId')
 movies = movies.merge(links.dropna(), on='movieId')
-
-uris = movies.uri
-with open('test.txt', 'w') as fp:
-    fp.write(', '.join([f"'{x}'" for x in uris]))
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
@@ -98,3 +107,9 @@ def get_movies_iter():
 
 def get_actor_id(actor_name):
     return actors.get(actor_name, None)
+
+
+if __name__ == "__main__":
+    print(transform_title('Misérables, Les '))
+    print(transform_title('Good, the Bad and the Ugly, The'))
+    print(transform_title('Lust, Caution (Se, jie) (2007)'))

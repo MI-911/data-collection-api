@@ -1,13 +1,7 @@
 from neo4j import GraphDatabase
+from os import environ
 
-
-query = "MATCH (n:Movie) WHERE n.`http://xmlns.com/foaf/0.1/name` IN [$entities] WITH collect(n) as movies "\
-        "CALL algo.pageRank.stream('MovieRelated', 'http://wikidata.dbpedia.org/ontology/starring',"\
-        "{iterations: 300, dampingFactor: 0.85, sourceNodes: movies, direction: 'BOTH'}) YIELD nodeId, score "\
-        "RETURN algo.asNode(nodeId).`http://xmlns.com/foaf/0.1/name` AS page,score "\
-        "ORDER BY score DESC LIMIT 50"
-
-_uri = "bolt://localhost:7778"
+_uri = environ.get('BOLT_URI', 'bolt://localhost:7778')
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
@@ -22,8 +16,8 @@ def _get_last_batch(tx, source_uris, seen):
             WITH collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
         MATCH (r:MovieRelated)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
             WITH movies, m.uri AS uri, m.pagerank AS pr,  count(r) AS connected
-            WITH movies, collect({uri: uri, pr: pr, c: connected}) AS movies, sum(connected) AS total
-            UNWIND movies as m
+            WITH movies, collect({uri: uri, pr: pr, c: connected}) AS movies2, sum(connected) AS total
+            UNWIND movies2 as m
             WITH movies + collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
         UNWIND movies AS movie
             WITH movie.uri AS uri, movie.pr AS pr, movie.c AS c
@@ -43,11 +37,6 @@ def get_last_batch(source_uris, seen):
     return res
 
 
-def _get_related_entities(tx, entities):
-    for record in tx.run(query.replace('%entities', entities)):
-        print(record)
-
-
 def _get_one_hop_entities(tx, uri): 
     query = "MATCH (m)-[]-(t)  WHERE m.uri = $uri RETURN t" 
 
@@ -59,12 +48,6 @@ def get_one_hop_entities(uri):
         res = session.read_transaction(_get_one_hop_entities, uri=uri)
 
     return [_get_schema_label(n) for n in res.value()]
-
-
-def get_related_entities(entities):
-    with driver.session() as session:
-        for record in session.run(query, entities=list(entities)):
-            print(record)
 
 
 def _get_schema_label(node): 
@@ -89,7 +72,7 @@ def _get_unseen_entities(tx, uris, limit):
     MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
         WITH r, m, score
     ORDER BY score DESC, m.pagerank DESC
-        WITH r, collect(m)[..5] as movies, score
+        WITH r, collect(DISTINCT m)[..5] as movies, score
     RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
         r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
         r:Genre as genre, movies, score
@@ -136,7 +119,7 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
         MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
             WITH r, m, score
         ORDER BY score DESC, m.pagerank DESC
-            WITH r, collect(m)[..5] as movies, score
+            WITH r, collect(DISTINCT m)[..5] as movies, score
         RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
             r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
             r:Genre as genre, movies, score"""

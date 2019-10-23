@@ -5,3 +5,5 @@ pandas
 neo4j
 flask_cors
 lxml
+gunicorn
+
