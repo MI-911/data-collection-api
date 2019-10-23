@@ -114,15 +114,15 @@ def feedback():
     else:
         num_rand += N_ENTITIES
 
-    if len(rated_entities) < MINIMUM_SEED_SIZE:
+    random_entities = _get_samples()[:num_rand]
 
+    if len(rated_entities) < MINIMUM_SEED_SIZE:
         # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
-        random_entities = _get_samples()[:num_rand]
         requested_entities = [entity for result in results for entity in result]
         result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
     else:
-        parallel.append([get_unseen_entities, seen_entities, num_rand])
+        parallel.append([get_unseen_entities, random_entities, seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(x) for x in requested_entities]
