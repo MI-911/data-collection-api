@@ -46,9 +46,9 @@ def get_profile(actor):
 
 def _get_samples():
     samples = dataset.sample(50, get_seen_entities())
-    samples = [(sample, dataset.get_sampling_score(sample['movieId'], k=2000)) for sample in samples]
+    samples = [(sample, dataset.get_sampling_score(sample['movieId'], k=2000)) for index, sample in samples.iterrows()]
     samples = sorted(samples, key=lambda x: x[1], reverse=True)
-    return [_get_movie_from_row(row) for row in samples[:5]]
+    return [_get_movie_from_row(row) for row, score in samples[:5]]
 
 
 def _get_movie_from_row(row):

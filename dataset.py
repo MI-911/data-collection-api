@@ -63,19 +63,20 @@ def get_actor_id(actor_name):
 NUM_RATINGS_MAP = {}  # Cache
 def get_num_ratings(movie_id): 
     if movie_id not in NUM_RATINGS_MAP: 
-        NUM_RATINGS_MAP[movie_id] = len(ratings.where(ratings['movieId'] == movie_id))
+        NUM_RATINGS_MAP[movie_id] = len(ratings[ratings['movieId'] == movie_id])
     return NUM_RATINGS_MAP[movie_id]
 
 
 def get_year(movie_id): 
-    return int(movies.where(movies['movieId'] == movie_id)['year'])
+    return int(movies[movies['movieId'] == movie_id]['year'].values[-1])
 
 
 def get_sampling_score(movie_id, k=2000): 
     N = len(ratings)
-    Y = get_year(movie_id) 
+    Y = get_year(movie_id)
+    Y = Y - k if (Y - k) > 1 else 1  # Avoid log errors
     R = get_num_ratings(movie_id)
-    return (R / N) * (log(Y - k))
+    return (R / N) * (log(Y))
 
     
 
