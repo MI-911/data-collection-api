@@ -41,10 +41,11 @@ def get_profile(actor):
 
     return send_from_directory('actor_images', f'{actor}.jpg')
 
-
 def _get_samples():
     samples = dataset.sample(50, get_seen_entities())
-    return [_get_movie_from_row(row) for index, row in samples[:5].iterrows()]
+    samples = [(sample, dataset.get_sampling_score(sample['movieId'], k=2000)) for sample in samples]
+    samples = sorted(samples, key=lambda x: x[1], reverse=True)
+    return [_get_movie_from_row(row) for row in samples[:5]]
 
 
 def _get_movie_from_row(row):

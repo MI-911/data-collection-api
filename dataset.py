@@ -5,6 +5,7 @@ import re
 import pandas as pd
 from pandas import DataFrame
 import itertools
+from math import log
 
 
 def _replace_ends_with(title, substr):
@@ -30,12 +31,6 @@ def transform_title(title):
     title = _replace_ends_with(title, 'Los')
 
     return title.strip()
-
-
-# Apply movieId as index
-for df in [movies, ratings, links]:
-    df.sort_values(by='movieId', inplace=True)
-    df.reset_index(inplace=True, drop=True)
 
 
 def sample(count, exclude):
@@ -72,8 +67,15 @@ def get_num_ratings(movie_id):
     return NUM_RATINGS_MAP[movie_id]
 
 
-def get_sampling_score(movie_id): 
-    pass
+def get_year(movie_id): 
+    return int(movies.where(movies['movieId'] == movie_id)['year'])
+
+
+def get_sampling_score(movie_id, k=2000): 
+    N = len(ratings)
+    Y = get_year(movie_id) 
+    R = get_num_ratings(movie_id)
+    return (R / N) * (log(Y - k))
 
     
 
@@ -122,6 +124,12 @@ movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 # Merge movies with mappings and links
 movies = movies.merge(mapping.dropna(), on='movieId')
 movies = movies.merge(links.dropna(), on='movieId')
+
+# Apply movieId as index
+for df in [movies, ratings, links]:
+    df.sort_values(by='movieId', inplace=True)
+    df.reset_index(inplace=True, drop=True)
+
 
 
 
