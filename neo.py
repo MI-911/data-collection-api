@@ -57,33 +57,27 @@ def _get_schema_label(node):
         return 'N/A'
 
 
-def _get_unseen_entities(tx, uris, limit):
+def _get_unseen_entities(tx, source_uris, seen, limit):
     query = """ 
-    MATCH (m:MovieRelated)  WHERE NOT m.uri IN $uris
-        WITH id(m) as id, rand() AS number
-    ORDER BY number
-    LIMIT 1000
-    MATCH (m) WHERE id(m) = id with m, size((m)<--(:MovieRelated)) as c, number
-        WITH COLLECT({entity: m, count:c, number: number}) as data, count(c) as total
-    UNWIND data as d
-        WITH id(d.entity) as id, d.number + (d.count / total) as score
-    ORDER BY score DESC
+    MATCH (m:Movie)-->(r:MovieRelated) WHERE m.uri IN $suris AND NOT r.uri IN $seen
+        WITH DISTINCT r, id(r) AS id
+    ORDER BY r.pagerank
     LIMIT $lim
     MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
-        WITH r, m, score
-    ORDER BY score DESC, m.pagerank DESC
-        WITH r, collect(DISTINCT m)[..5] as movies, score
+        WITH r, m
+    ORDER BY r.pagerank DESC, m.pagerank DESC
+        WITH r, collect(DISTINCT m)[..5] as movies
     RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
-        r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
-        r:Genre as genre, movies, score
+           r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
+           r:Genre as genre, movies
     """
 
-    return tx.run(query, uris=uris, lim=limit)
+    return tx.run(query, suris=source_uris, seen=seen, lim=limit)
 
 
-def get_unseen_entities(uris, limit):
+def get_unseen_entities(source_uris, seen, limit):
     with driver.session() as session:
-        res = session.read_transaction(_get_unseen_entities, uris, limit)
+        res = session.read_transaction(_get_unseen_entities, source_uris, seen, limit)
         res = [r for r in res]
 
     return res
