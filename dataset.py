@@ -6,31 +6,6 @@ import pandas as pd
 from pandas import DataFrame
 import itertools
 
-data_path = 'data'
-ml_path = os.path.join(data_path, 'movielens')
-
-# Load from JSON
-actors = json.load(open(f'{data_path}/actors.json', 'r'))
-
-# Load from CSV
-movies = pd.read_csv(f'{ml_path}/movies.csv')
-ratings = pd.read_csv(f'{ml_path}/ratings.csv')
-links = pd.read_csv(f'{ml_path}/links.csv')
-mapping = pd.read_csv(f'{ml_path}/mapping.csv')
-
-# Get unique genres
-genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
-genres_unique = pd.DataFrame(genres_unique, columns=['genre'])
-genres_unique = genres_unique[~genres_unique.genre.str.contains('no genres listed')]
-
-# Split title and year
-movies['year'] = movies.title.str.extract(r'\((\d{4})\)', expand=True)
-movies.dropna(inplace=True)
-movies.year = movies.year.astype(int)
-movies.title = movies.title.str[:-7]
-movies.genres = movies.genres.str.split('|').tolist()
-movies = movies[movies.year <= 2016]
-
 
 def _replace_ends_with(title, substr):
     if title.endswith(f', {substr}'):
@@ -56,25 +31,6 @@ def transform_title(title):
 
     return title.strip()
 
-
-movies.title = movies.title.map(transform_title)
-
-# Add variance to movies, remove movies with NaN variance (|r|<2)
-dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
-dftmp.columns = ['variance']
-movies = movies.merge(dftmp.dropna(), on='movieId')
-
-# Add count to movies
-dftmp = ratings[['movieId', 'rating']].groupby('movieId').count()
-dftmp.columns = ['numRatings']
-movies = movies.merge(dftmp.dropna(), on='movieId')
-
-# Remove movies with less than median ratings
-movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
-
-# Merge movies with mappings and links
-movies = movies.merge(mapping.dropna(), on='movieId')
-movies = movies.merge(links.dropna(), on='movieId')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
@@ -107,6 +63,66 @@ def get_movies_iter():
 
 def get_actor_id(actor_name):
     return actors.get(actor_name, None)
+
+
+NUM_RATINGS_MAP = {}  # Cache
+def get_num_ratings(movie_id): 
+    if movie_id not in NUM_RATINGS_MAP: 
+        NUM_RATINGS_MAP[movie_id] = len(ratings.where(ratings['movieId'] == movie_id))
+    return NUM_RATINGS_MAP[movie_id]
+
+
+def get_sampling_score(movie_id): 
+    pass
+
+    
+
+
+
+data_path = 'data'
+ml_path = os.path.join(data_path, 'movielens')
+
+# Load from JSON
+actors = json.load(open(f'{data_path}/actors.json', 'r'))
+
+# Load from CSV
+movies = pd.read_csv(f'{ml_path}/movies.csv')
+ratings = pd.read_csv(f'{ml_path}/ratings.csv')
+links = pd.read_csv(f'{ml_path}/links.csv')
+mapping = pd.read_csv(f'{ml_path}/mapping.csv')
+
+# Get unique genres
+genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
+genres_unique = pd.DataFrame(genres_unique, columns=['genre'])
+genres_unique = genres_unique[~genres_unique.genre.str.contains('no genres listed')]
+
+# Split title and year
+movies['year'] = movies.title.str.extract(r'\((\d{4})\)', expand=True)
+movies.dropna(inplace=True)
+movies.year = movies.year.astype(int)
+movies.title = movies.title.str[:-7]
+movies.genres = movies.genres.str.split('|').tolist()
+movies = movies[movies.year <= 2016]
+
+movies.title = movies.title.map(transform_title)
+
+# Add variance to movies, remove movies with NaN variance (|r|<2)
+dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
+dftmp.columns = ['variance']
+movies = movies.merge(dftmp.dropna(), on='movieId')
+
+# Add count to movies
+dftmp = ratings[['movieId', 'rating']].groupby('movieId').count()
+dftmp.columns = ['numRatings']
+movies = movies.merge(dftmp.dropna(), on='movieId')
+
+# Remove movies with less than median ratings
+movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
+
+# Merge movies with mappings and links
+movies = movies.merge(mapping.dropna(), on='movieId')
+movies = movies.merge(links.dropna(), on='movieId')
+
 
 
 if __name__ == "__main__":
