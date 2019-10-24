@@ -81,6 +81,10 @@ def _has_both_sentiments():
     return set(get_liked_entities()).difference(movie_uris) and set(get_disliked_entities()).difference(movie_uris)
 
 
+def is_done():
+    return len(get_liked_entities()) >= MAX_QUESTIONS and len(get_disliked_entities()) >= MAX_QUESTIONS
+
+
 @app.route('/api/feedback', methods=['POST'])
 def feedback():
     json_data = request.json
@@ -90,8 +94,7 @@ def feedback():
 
     rated_entities = get_rated_entities()
 
-    # Only ask at max N_QUESTIONS
-    if len(seen_entities) >= MAX_QUESTIONS and _has_both_sentiments():
+    if is_done():
         liked = get_liked_entities()
         disliked = get_disliked_entities()
         parallel = list()
