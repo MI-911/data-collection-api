@@ -82,7 +82,7 @@ def _has_both_sentiments():
 
 
 def is_done():
-    return len(get_liked_entities) > MAX_QUESTIONS and len(get_disliked_entities) > MAX_QUESTIONS
+    return len(get_liked_entities()) >= MAX_QUESTIONS and len(get_disliked_entities()) >= MAX_QUESTIONS
 
 
 @app.route('/api/feedback', methods=['POST'])
