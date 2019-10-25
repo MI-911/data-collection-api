@@ -171,6 +171,7 @@ def get_related_entities(entities, seen_entities):
 def get_session_path(header):
     return os.path.join(SESSION_PATH, f'{header}.json')
 
+
 def update_session(liked, disliked, unknown):
     header = get_authorization()
     user_session_path = get_session_path(header)

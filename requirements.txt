@@ -6,4 +6,5 @@ neo4j
 flask_cors
 lxml
 gunicorn
-
+sparqlwrapper
+tqdm
