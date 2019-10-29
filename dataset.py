@@ -30,6 +30,7 @@ def transform_title(title):
     title = _replace_ends_with(title, 'Das')
     title = _replace_ends_with(title, 'Il')
     title = _replace_ends_with(title, 'Los')
+    title = _replace_ends_with(title, 'Las')
 
     return title.strip()
 
@@ -94,7 +95,6 @@ actors = json.load(open(f'{data_path}/actors.json', 'r'))
 movies = pd.read_csv(f'{ml_path}/movies.csv')
 ratings = pd.read_csv(f'{ml_path}/ratings.csv')
 links = pd.read_csv(f'{ml_path}/links.csv')
-mapping = pd.read_csv(f'{ml_path}/mapping.csv')
 
 # Get unique genres
 genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
@@ -135,4 +135,3 @@ if __name__ == "__main__":
         print(f'Starts {time()}')
         sampled = movies[~movies.title.isin(["test"])].sample(n=30, weights=movies.numRatings)
         print(sampled)
-        
