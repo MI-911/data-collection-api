@@ -9,6 +9,11 @@ genre_query = """SELECT ?genre ?genreLabel ?film WHERE {
                    ?film wdt:P345 "%s".
                  }"""
 
+subject_query = """SELECT ?subject ?subjectLabel WHERE {
+                   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                   wd:%s wdt:P921 ?subject.
+                 }"""
+
 actor_query = """SELECT ?actor ?actorLabel ?actorImdb ?actorImage WHERE {
                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                    {wd:%s wdt:P161 ?actor} UNION {wd:%s wdt:P725 ?actor}.
@@ -42,6 +47,15 @@ def get_genres(imdb_id):
         genres[result['genre']['value']] = result['genreLabel']['value']
 
     return movie_uri, genres
+
+
+def get_subjects(entity_id):
+    subjects = dict()
+
+    for result in get_results(subject_query % entity_id):
+        subjects[result['subject']['value']] = result['subjectLabel']['value']
+
+    return subjects
 
 
 def get_people(entity_id):
