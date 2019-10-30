@@ -1,12 +1,13 @@
 import json
 import os
 import re
-
-import pandas as pd
-from pandas import DataFrame
-import itertools
 from math import log
-from time import sleep, time
+from time import time
+
+import numpy as np
+import pandas as pd
+
+NUM_RATINGS_MAP = {}  # Cache
 
 
 def _replace_ends_with(title, substr):
@@ -42,7 +43,7 @@ def transform_imdb_id(imdb_id):
 def sample(count, exclude):
     relevant = movies[~movies.uri.isin(exclude)]
 
-    return relevant.sample(n=count, weights=relevant.numRatings)
+    return relevant.sample(n=count, weights=relevant.weight)
 
 
 def get_unseen(seen):
@@ -66,7 +67,6 @@ def get_actor_id(actor_name):
     return actors.get(actor_name, None)
 
 
-NUM_RATINGS_MAP = {}  # Cache
 def get_num_ratings(movie_id): 
     if movie_id not in NUM_RATINGS_MAP: 
         NUM_RATINGS_MAP[movie_id] = len(ratings[ratings['movieId'] == movie_id])
@@ -75,14 +75,6 @@ def get_num_ratings(movie_id):
 
 def get_year(movie_id): 
     return int(movies[movies['movieId'] == movie_id]['year'].values[-1])
-
-
-def get_sampling_score(movie_id, k=2000): 
-    N = len(ratings)
-    Y = get_year(movie_id)
-    Y = Y - k if (Y - k) > 1 else 1  # Avoid log errors
-    R = get_num_ratings(movie_id)
-    return (R / N) * (log(Y))
 
 
 data_path = 'data'
@@ -118,6 +110,9 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 
 # Remove movies with less than median ratings
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
+
+# Get weights for sampling
+movies['weight'] = (1 + np.log2([max(1, year - 2000) for year in movies['year']])) * movies['numRatings']
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')

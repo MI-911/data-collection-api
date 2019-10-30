@@ -8,3 +8,4 @@ lxml
 gunicorn
 sparqlwrapper
 tqdm
+numpy
