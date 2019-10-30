@@ -52,17 +52,15 @@ def get_resource(record):
 
 
 def get_id(record):
-    if _person(record):
-        return get_actor_id(record['name'])
-    elif record['movie']:
-        return _movie_from_uri(record['uri']['movieId'])
+    if _person(record) or record['movie']:
+        return record['imdb']
 
     return None
 
 
 def record_to_entity(record):
     return {
-        "name": record['name'] if record['name'] else record['label'],
+        "name": record['name'],
         "id": get_id(record),
         "resource": get_resource(record),
         "uri": record['uri'],
@@ -70,9 +68,10 @@ def record_to_entity(record):
         "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
 
+
 def _movie_from_uri(uri):
     row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
     return {
-        attr : val 
+        attr: val
         for attr, val in zip(movies.columns, next(row, []))
     }

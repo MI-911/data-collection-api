@@ -13,8 +13,8 @@ def _get_last_batch(tx, source_uris, seen):
             WITH m.uri AS uri, m.pagerank AS pr,  count(r) AS connected
             WITH collect({uri: uri, pr: pr, c: connected}) as movies, sum(connected) AS total
             UNWIND movies as m
-            WITH collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
-        MATCH (r:MovieRelated)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
+            WITH collect({uri: m.uri, pr: m.pr, c: 1.0 * m.c / total}) as movies
+        MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
             WITH movies, m.uri AS uri, m.pagerank AS pr,  count(r) AS connected
             WITH movies, collect({uri: uri, pr: pr, c: connected}) AS movies2, sum(connected) AS total
             UNWIND movies2 as m
@@ -99,17 +99,13 @@ def create_genre(genre, uri):
 
 
 def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
+    print('Get relevant')
     q = """
-        MATCH (n:Movie) WHERE n.uri IN $uris WITH collect(n) AS movies
-        CALL algo.pageRank.stream(
-          null,
-          null,
-          {iterations: 50, dampingFactor: 0.95, sourceNodes: movies, direction: 'BOTH'}
-        ) YIELD nodeId, score
-        MATCH (m) where id(m) = nodeId AND NOT m.uri in $seen AND NOT m:Movie
-            WITH id(m) as id, score
+        MATCH (n)--(m) WHERE n.uri IN $uris WITH id(m) AS nodeId
+        MATCH (m) WHERE id(m) = nodeId AND NOT m.uri IN $seen
+            WITH id(m) AS id, m.pagerank AS score
         ORDER BY score DESC LIMIT 50
-        MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
+        MATCH (r)<--(m:Movie) WHERE id(r) = id
             WITH r, m, score
         ORDER BY score DESC, m.pagerank DESC
             WITH r, collect(DISTINCT m)[..5] as movies, score

@@ -9,6 +9,7 @@ from flask_cors import CORS
 import time
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
+from rename_files import rename_actors, rename_movies
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 
 app = Flask(__name__)
@@ -45,8 +46,10 @@ def get_profile(actor):
 
 
 def _get_samples():
-    samples = dataset.sample(5, get_seen_entities())
-    return [_get_movie_from_row(row) for index, row in samples.iterrows()]
+    samples = dataset.sample(25, get_seen_entities())
+    samples = [(sample, dataset.get_sampling_score(sample['movieId'], k=2000)) for index, sample in samples.iterrows()]
+    samples = sorted(samples, key=lambda x: x[1], reverse=True)
+    return [_get_movie_from_row(row) for row, score in samples[:5]]
 
 
 def _get_movie_from_row(row):
@@ -162,7 +165,8 @@ def get_next_entities(parallel):
 
 def get_related_entities(entities, seen_entities):
     liked_relevant = get_relevant_neighbors(entities, seen_entities)
-    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
+    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3,
+                                                     n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
     return liked_relevant_list
 
 

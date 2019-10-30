@@ -32,6 +32,7 @@ def transform_title(title):
     title = _replace_ends_with(title, 'Il')
     title = _replace_ends_with(title, 'Los')
     title = _replace_ends_with(title, 'Las')
+    title = _replace_ends_with(title, 'An')
 
     return title.strip()
 
@@ -40,10 +41,18 @@ def transform_imdb_id(imdb_id):
     return f'tt{str(imdb_id).zfill(7)}'
 
 
+def get_sampling_score(movie_id, k=2000):
+    n = len(ratings)
+    y = get_year(movie_id) - k
+    r = get_num_ratings(movie_id)
+
+    return (r / n) * (np.log(max(1, y)))
+
+
 def sample(count, exclude):
     relevant = movies[~movies.uri.isin(exclude)]
 
-    return relevant.sample(n=count, weights=relevant.weight)
+    return relevant.sample(n=count, weights=relevant.numRatings)
 
 
 def get_unseen(seen):
@@ -112,7 +121,7 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
-movies['weight'] = (1 + np.log2([max(1, year - 2000) for year in movies['year']])) * movies['numRatings']
+# movies['weight'] = [max(1, year - 1990) for year in movies['year']] * movies['numRatings']
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')
@@ -132,5 +141,5 @@ if __name__ == "__main__":
     print(movies.shape)
     for n in range(20):
         print(f'Starts {time()}')
-        sampled = movies[~movies.title.isin(["test"])].sample(n=30, weights=movies.numRatings)
+        sampled = movies.sample(n=30, weights=movies.numRatings)
         print(sampled)
