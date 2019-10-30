@@ -40,9 +40,9 @@ def transform_imdb_id(imdb_id):
 
 
 def sample(count, exclude):
-    filtered_movies = movies[~movies.uri.isin(exclude)]
+    relevant = movies[~movies.uri.isin(exclude)]
 
-    return ratings.merge(filtered_movies).sample(count).drop_duplicates(['movieId'])
+    return relevant.sample(n=count, weights=relevant.numRatings)
 
 
 def get_unseen(seen):
