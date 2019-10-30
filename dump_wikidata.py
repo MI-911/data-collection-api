@@ -148,7 +148,7 @@ def get_unmatched_movie_genres():
 def write_movies():
     uris = json.load(open(movie_uri_path, 'r'))
 
-    with open('movies.csv', 'w') as fp:
+    with open(os.path.join(base_path, 'movies.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, ['uri:ID', 'name', 'year:int', 'imdb', ':LABEL'])
         writer.writeheader()
 
@@ -159,36 +159,32 @@ def write_movies():
             writer.writerow({'uri:ID': uris[movie.imdbId], 'name': movie.title, 'year:int': movie.year, 'imdb': movie.imdbId, ':LABEL': 'Movie'})
 
 
-def write_genres():
+def write_categories():
     genres = json.load(open(genres_path, 'r'))
+    subjects = json.load(open(subjects_path, 'r'))
+    # People and movies can be subjects, we should not write them twice
+    existing_uris = set(json.load(open(people_path, 'r')).keys()).union(set(movie_uri.values()))
 
-    with open('genres.csv', 'w') as fp:
+    with open(os.path.join(base_path, 'categories.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, ['uri:ID', 'name', ':LABEL'])
         writer.writeheader()
 
         for key, value in genres.items():
-            writer.writerow({'uri:ID': key, 'name': value, ':LABEL': 'Genre'})
-
-
-def write_subjects():
-    subjects = json.load(open(subjects_path, 'r'))
-    result = list()
-
-    with open('subjects.csv', 'w') as fp:
-        writer = csv.DictWriter(fp, ['uri:ID', 'name', ':LABEL'])
-        writer.writeheader()
+            if key not in seen_uris and key not in existing_uris:
+                writer.writerow({'uri:ID': key, 'name': value.title(), ':LABEL': 'Category'})
+                seen_uris.add(key)
 
         for key, value in subjects.items():
-            writer.writerow({'uri:ID': key, 'name': value, ':LABEL': 'Subject'})
+            if key not in seen_uris and key not in existing_uris:
+                writer.writerow({'uri:ID': key, 'name': value.title(), ':LABEL': 'Category'})
+                seen_uris.add(key)
 
 
 def write_movie_subjects():
     movie_subjects = json.load(open(movie_subjects_path, 'r'))
     movie_uri = json.load(open(movie_uri_path, 'r'))
 
-    result = list()
-
-    with open('movie_subject.csv', 'w') as fp:
+    with open(os.path.join(base_path, 'movie_subject.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
@@ -204,7 +200,7 @@ def write_movie_genres():
     movie_genres = json.load(open(movie_genres_path, 'r'))
     movie_uri = json.load(open(movie_uri_path, 'r'))
 
-    with open('movie_genre.csv', 'w') as fp:
+    with open(os.path.join(base_path, 'movie_genre.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
@@ -216,57 +212,40 @@ def write_movie_genres():
                 writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'HAS_GENRE'})
 
 
-def write_movie_actors():
-    movie_actors = json.load(open(movie_actors_path, 'r'))
+def _write_movie_person(source, dest, relation, valid_people):
+    movie_persons = json.load(open(source, 'r'))
     movie_uri = json.load(open(movie_uri_path, 'r'))
 
-    result = list()
+    with open(os.path.join(base_path, dest), 'w') as fp:
+        writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
+        writer.writeheader()
 
-    for key, value in movie_actors.items():
-        if not value or key not in movie_uri:
-            continue
+        for key, value in movie_persons.items():
+            if not value or key not in movie_uri:
+                continue
 
-        result.append({
-            'head': movie_uri[key],
-            'relation': 'STARRING',
-            'tails': value
-        })
-
-    with open('movie_actors.json', 'w') as fp:
-        json.dump(dict(relationships=result), fp)
-
-
-def write_movie_directors():
-    movie_directors = json.load(open(movie_directors_path, 'r'))
-    movie_uri = json.load(open(movie_uri_path, 'r'))
-
-    result = list()
-
-    for key, value in movie_directors.items():
-        if not value or key not in movie_uri:
-            continue
-
-        result.append({
-            'head': movie_uri[key],
-            'relation': 'DIRECTED_BY',
-            'tails': value
-        })
-
-    with open('movie_directors.json', 'w') as fp:
-        json.dump(dict(relationships=result), fp)
+            for tail in value:
+                if tail in valid_people:
+                    writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': relation})
 
 
 def write_people():
     people = json.load(open(people_path, 'r'))
+    valid_people = set()
 
-    result = list()
-    for key, value in people.items():
-        value['uri'] = key
+    with open(os.path.join(base_path, 'people.csv'), 'w') as fp:
+        writer = csv.DictWriter(fp, ['uri:ID', 'name', 'imdb', 'image', ':LABEL'])
+        writer.writeheader()
 
-        result.append(value)
+        for key, value in people.items():
+            # For some reason, a few movies are included as people...
+            # If they are actually people, their IMDb id starts with nm
+            if value['imdb'].startswith('nm'):
+                writer.writerow({'uri:ID': key, 'name': value['name'], 'image': value['image'], 'imdb': value['imdb'], ':LABEL': 'Person'})
+                valid_people.add(key)
 
-    with open('people.json', 'w') as fp:
-        json.dump(dict(people=result), fp)
+    _write_movie_person(movie_actors_path, 'movie_actor.csv', 'STARRING', valid_people)
+    _write_movie_person(movie_directors_path, 'movie_director.csv', 'DIRECTED_BY', valid_people)
 
 
 def find_duplicate_movies():
@@ -301,9 +280,8 @@ def write_triples():
 
 
 if __name__ == "__main__":
-    write_genres()
+    write_categories()
     write_movies()
     write_movie_genres()
-    write_subjects()
     write_movie_subjects()
-
+    write_people()
