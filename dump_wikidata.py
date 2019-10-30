@@ -279,9 +279,19 @@ def write_triples():
             writer.writerows(rows)
 
 
+def write_mapping():
+    with open('mapping.csv', mode='w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=['imdbId', 'uri'])
+        writer.writeheader()
+
+        for imdb, value in movie_uri.items():
+            writer.writerow({'imdbId': imdb, 'uri': value})
+
+
 if __name__ == "__main__":
     write_categories()
     write_movies()
     write_movie_genres()
     write_movie_subjects()
     write_people()
+    write_mapping()

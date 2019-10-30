@@ -7,9 +7,9 @@ driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 def _get_last_batch(tx, source_uris, seen):
     query = """
-        MATCH (m:Movie)-->(r:MovieRelated) WHERE m.uri IN $uris AND NOT r IN $seen
+        MATCH (m:Movie)-->(r) WHERE m.uri IN $uris AND NOT r IN $seen
             WITH id(r) AS id
-        MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id AND NOT m.uri IN $seen
+        MATCH (r)<--(m:Movie) WHERE id(r) = id AND NOT m.uri IN $seen
             WITH m.uri AS uri, m.pagerank AS pr,  count(r) AS connected
             WITH collect({uri: uri, pr: pr, c: connected}) as movies, sum(connected) AS total
             UNWIND movies as m
@@ -59,17 +59,16 @@ def _get_schema_label(node):
 
 def _get_unseen_entities(tx, source_uris, seen, limit):
     query = """ 
-    MATCH (m:Movie)-->(r:MovieRelated) WHERE m.uri IN $suris AND NOT r.uri IN $seen
+    MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
         WITH DISTINCT r, id(r) AS id
     ORDER BY r.pagerank
     LIMIT $lim
-    MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
+    MATCH (r)<--(m:Movie) WHERE id(r) = id
         WITH r, m
     ORDER BY r.pagerank DESC, m.pagerank DESC
         WITH r, collect(DISTINCT m)[..5] as movies
-    RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
-           r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
-           r:Genre as genre, movies
+    RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
+           r.uri AS uri, r.name AS name, r:Genre as genre, movies
     """
 
     return tx.run(query, suris=source_uris, seen=seen, lim=limit)
@@ -103,7 +102,7 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
     q = """
         MATCH (n:Movie) WHERE n.uri IN $uris WITH collect(n) AS movies
         CALL algo.pageRank.stream(
-          'MovieRelated',
+          null,
           null,
           {iterations: 50, dampingFactor: 0.95, sourceNodes: movies, direction: 'BOTH'}
         ) YIELD nodeId, score
@@ -114,8 +113,7 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
             WITH r, m, score
         ORDER BY score DESC, m.pagerank DESC
             WITH r, collect(DISTINCT m)[..5] as movies, score
-        RETURN r.`http://www.w3.org/2000/01/rdf-schema#label` AS label, r:Director AS director, r:Actor AS actor, 
-            r:Subject AS subject, r:Movie as movie, r.uri AS uri, r.`http://xmlns.com/foaf/0.1/name` AS name,
-            r:Genre as genre, movies, score"""
+        RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
+               r.uri AS uri, r.name AS name, r:Genre as genre, movies, score"""
 
     return tx.run(q, uris=uri_list, seen=seen_uri_list)

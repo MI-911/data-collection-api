@@ -95,6 +95,7 @@ actors = json.load(open(f'{data_path}/actors.json', 'r'))
 movies = pd.read_csv(f'{ml_path}/movies.csv')
 ratings = pd.read_csv(f'{ml_path}/ratings.csv')
 links = pd.read_csv(f'{ml_path}/links.csv')
+mapping = pd.read_csv(f'{ml_path}/mapping.csv')
 
 # Get unique genres
 genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
@@ -123,6 +124,9 @@ movies = movies.merge(links, on='movieId')
 
 # Proper imdb ids
 movies.imdbId = movies.imdbId.map(transform_imdb_id)
+
+# Merge with mappings
+movies = movies.merge(mapping, on='imdbId')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
