@@ -6,6 +6,7 @@ import pandas as pd
 from pandas import DataFrame
 import itertools
 from math import log
+from time import sleep, time
 
 
 def _replace_ends_with(title, substr):
@@ -29,8 +30,13 @@ def transform_title(title):
     title = _replace_ends_with(title, 'Das')
     title = _replace_ends_with(title, 'Il')
     title = _replace_ends_with(title, 'Los')
+    title = _replace_ends_with(title, 'Las')
 
     return title.strip()
+
+
+def transform_imdb_id(imdb_id):
+    return f'tt{str(imdb_id).zfill(7)}'
 
 
 def sample(count, exclude):
@@ -78,9 +84,6 @@ def get_sampling_score(movie_id, k=2000):
     R = get_num_ratings(movie_id)
     return (R / N) * (log(Y))
 
-    
-
-
 
 data_path = 'data'
 ml_path = os.path.join(data_path, 'movielens')
@@ -92,7 +95,6 @@ actors = json.load(open(f'{data_path}/actors.json', 'r'))
 movies = pd.read_csv(f'{ml_path}/movies.csv')
 ratings = pd.read_csv(f'{ml_path}/ratings.csv')
 links = pd.read_csv(f'{ml_path}/links.csv')
-mapping = pd.read_csv(f'{ml_path}/mapping.csv')
 
 # Get unique genres
 genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
@@ -105,14 +107,8 @@ movies.dropna(inplace=True)
 movies.year = movies.year.astype(int)
 movies.title = movies.title.str[:-7]
 movies.genres = movies.genres.str.split('|').tolist()
-movies = movies[movies.year <= 2016]
 
 movies.title = movies.title.map(transform_title)
-
-# Add variance to movies, remove movies with NaN variance (|r|<2)
-dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
-dftmp.columns = ['variance']
-movies = movies.merge(dftmp.dropna(), on='movieId')
 
 # Add count to movies
 dftmp = ratings[['movieId', 'rating']].groupby('movieId').count()
@@ -122,19 +118,20 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 # Remove movies with less than median ratings
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
-# Merge movies with mappings and links
-movies = movies.merge(mapping.dropna(), on='movieId')
-movies = movies.merge(links.dropna(), on='movieId')
+# Merge movies with links links
+movies = movies.merge(links, on='movieId')
+
+# Proper imdb ids
+movies.imdbId = movies.imdbId.map(transform_imdb_id)
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
     df.sort_values(by='movieId', inplace=True)
     df.reset_index(inplace=True, drop=True)
 
-
-
-
 if __name__ == "__main__":
-    print(transform_title('Misérables, Les '))
-    print(transform_title('Good, the Bad and the Ugly, The'))
-    print(transform_title('Lust, Caution (Se, jie) (2007)'))
+    print(movies.shape)
+    for n in range(20):
+        print(f'Starts {time()}')
+        sampled = movies[~movies.title.isin(["test"])].sample(n=30, weights=movies.numRatings)
+        print(sampled)
