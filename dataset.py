@@ -52,7 +52,7 @@ def get_sampling_score(movie_id, k=2000):
 def sample(count, exclude):
     relevant = movies[~movies.uri.isin(exclude)]
 
-    return relevant.sample(n=count, weights=relevant.numRatings)
+    return relevant.sample(n=count, weights=relevant.weight)
 
 
 def get_unseen(seen):
@@ -121,7 +121,7 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
-# movies['weight'] = [max(1, year - 1990) for year in movies['year']] * movies['numRatings']
+movies['weight'] = [1 + np.log2(max(1, year - 1990)) for year in movies['year']] * movies['numRatings']
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')
