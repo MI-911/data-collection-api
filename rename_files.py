@@ -25,5 +25,5 @@ def rename_movies():
 
 
 if __name__ == "__main__":
-    rename_actors()
+    # rename_actors()
     rename_movies()
