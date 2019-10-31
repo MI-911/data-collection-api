@@ -8,7 +8,7 @@ from dump_imdb import actors_directory
 
 
 def get_actor_soup(actor_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/name/nm{actor_id}').text, features='lxml')
+    return BeautifulSoup(requests.get(f'https://m.imdb.com/name/nm{actor_id}').text, features='lxml')
 
 
 def get_movie_soup(movie_id):
