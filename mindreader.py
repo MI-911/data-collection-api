@@ -16,7 +16,7 @@ app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-MAX_QUESTIONS = 5
+MIN_QUESTIONS = 10
 MINIMUM_SEED_SIZE = 10
 SESSION = {} 
 N_QUESTIONS = 9
@@ -46,7 +46,7 @@ def get_profile(actor):
 
 
 def _get_samples():
-    samples = dataset.sample(25, get_seen_entities())
+    samples = dataset.sample(10, get_seen_entities())
     samples = [(sample, dataset.get_sampling_score(sample['movieId'], k=2000)) for index, sample in samples.iterrows()]
     samples = sorted(samples, key=lambda x: x[1], reverse=True)
     return [_get_movie_from_row(row) for row, score in samples[:5]]
@@ -83,7 +83,7 @@ def _has_both_sentiments():
 
 
 def is_done():
-    return len(get_liked_entities()) >= MAX_QUESTIONS and len(get_disliked_entities()) >= MAX_QUESTIONS
+    return len(get_rated_entities()) >= MIN_QUESTIONS
 
 
 @app.route('/api/feedback', methods=['POST'])
@@ -110,8 +110,8 @@ def feedback():
 
         return jsonify({
             'prediction': True, 
-            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res], 
-            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
+            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:3],
+            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:3]
         })
 
     parallel = []
@@ -129,12 +129,17 @@ def feedback():
     random_entities = _get_samples()[:num_rand]
 
     if len(rated_entities) < MINIMUM_SEED_SIZE:
+        print('Less than minimum seed size')
+
         # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
     else:
-        parallel.append([get_unseen_entities, random_entities, seen_entities, num_rand])
+        print('Minimum seed size met')
+        print(num_rand)
+        
+        parallel.append([get_unseen_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(x) for x in requested_entities]
@@ -142,7 +147,7 @@ def feedback():
     no_duplicates = []
     [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
 
-    shuffle(no_duplicates)
+    no_duplicates = sorted(no_duplicates, key=lambda x: x['description'])
 
     return jsonify(no_duplicates)
 

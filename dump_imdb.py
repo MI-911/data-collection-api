@@ -55,21 +55,13 @@ def save_url_to_file(url, file):
             handle.write(block)
 
 
-def handle_movie(movie_id, imdb_id):
+def handle_movie(imdb_id):
     soup = get_movie_soup(imdb_id)
 
     # Save poster
     image_url = get_image_path(soup)
     if image_url:
         save_url_to_file(get_movie_poster(soup), get_image_path(movie_id))
-    else:
-        return False
-
-    # Save list of actor ids
-    actors = get_actors(soup)
-    if actors and len(actors) > 0:
-        with open(get_actors_path(movie_id), 'w') as outFile:
-            json.dump(actors, outFile)
     else:
         return False
 
@@ -146,7 +138,7 @@ def dump_movies():
     # Partition into n groups
     movie_imdb = split_into_chunks(movie_imdb, 50)
     
-    print(f'Sum succeeded: {handle_chunks(handle_movie_chunk, movie_imdb)}')
+    print(f'Sum succeeded: {_handle_chunks(handle_movie_chunk, movie_imdb)}')
 
 
 def write_existing_actors():
@@ -177,7 +169,7 @@ def dump_actors():
     print(len(actor_ids))
     actors = split_into_chunks(list(actor_ids), 1000)
 
-    print(f'Sum succeeded: {handle_chunks(handle_actor_chunk, actors)}')
+    print(f'Sum succeeded: {_handle_chunks(handle_actor_chunk, actors)}')
 
 
 if __name__ == "__main__":
