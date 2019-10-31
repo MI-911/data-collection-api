@@ -1,11 +1,13 @@
 import json
 import os
 import re
-
-import pandas as pd
-from pandas import DataFrame
-import itertools
 from math import log
+from time import time
+
+import numpy as np
+import pandas as pd
+
+NUM_RATINGS_MAP = {}  # Cache
 
 
 def _replace_ends_with(title, substr):
@@ -29,14 +31,28 @@ def transform_title(title):
     title = _replace_ends_with(title, 'Das')
     title = _replace_ends_with(title, 'Il')
     title = _replace_ends_with(title, 'Los')
+    title = _replace_ends_with(title, 'Las')
+    title = _replace_ends_with(title, 'An')
 
     return title.strip()
 
 
-def sample(count, exclude):
-    filtered_movies = movies[~movies.uri.isin(exclude)]
+def transform_imdb_id(imdb_id):
+    return f'tt{str(imdb_id).zfill(7)}'
 
-    return ratings.merge(filtered_movies).sample(count).drop_duplicates(['movieId'])
+
+def get_sampling_score(movie_id, k=2000):
+    n = len(ratings)
+    y = get_year(movie_id) - k
+    r = get_num_ratings(movie_id)
+
+    return (r / n) * (np.log(max(1, y)))
+
+
+def sample(count, exclude):
+    relevant = movies[~movies.uri.isin(exclude)]
+
+    return relevant.sample(n=count, weights=relevant.numRatings)
 
 
 def get_unseen(seen):
@@ -60,7 +76,6 @@ def get_actor_id(actor_name):
     return actors.get(actor_name, None)
 
 
-NUM_RATINGS_MAP = {}  # Cache
 def get_num_ratings(movie_id): 
     if movie_id not in NUM_RATINGS_MAP: 
         NUM_RATINGS_MAP[movie_id] = len(ratings[ratings['movieId'] == movie_id])
@@ -69,17 +84,6 @@ def get_num_ratings(movie_id):
 
 def get_year(movie_id): 
     return int(movies[movies['movieId'] == movie_id]['year'].values[-1])
-
-
-def get_sampling_score(movie_id, k=2000): 
-    N = len(ratings)
-    Y = get_year(movie_id)
-    Y = Y - k if (Y - k) > 1 else 1  # Avoid log errors
-    R = get_num_ratings(movie_id)
-    return (R / N) * (log(Y))
-
-    
-
 
 
 data_path = 'data'
@@ -105,14 +109,8 @@ movies.dropna(inplace=True)
 movies.year = movies.year.astype(int)
 movies.title = movies.title.str[:-7]
 movies.genres = movies.genres.str.split('|').tolist()
-movies = movies[movies.year <= 2016]
 
 movies.title = movies.title.map(transform_title)
-
-# Add variance to movies, remove movies with NaN variance (|r|<2)
-dftmp = ratings[['movieId', 'rating']].groupby('movieId').var()
-dftmp.columns = ['variance']
-movies = movies.merge(dftmp.dropna(), on='movieId')
 
 # Add count to movies
 dftmp = ratings[['movieId', 'rating']].groupby('movieId').count()
@@ -122,19 +120,26 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 # Remove movies with less than median ratings
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
-# Merge movies with mappings and links
-movies = movies.merge(mapping.dropna(), on='movieId')
-movies = movies.merge(links.dropna(), on='movieId')
+# Get weights for sampling
+# movies['weight'] = [max(1, year - 1990) for year in movies['year']] * movies['numRatings']
+
+# Merge movies with links links
+movies = movies.merge(links, on='movieId')
+
+# Proper imdb ids
+movies.imdbId = movies.imdbId.map(transform_imdb_id)
+
+# Merge with mappings
+movies = movies.merge(mapping, on='imdbId')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
     df.sort_values(by='movieId', inplace=True)
     df.reset_index(inplace=True, drop=True)
 
-
-
-
 if __name__ == "__main__":
-    print(transform_title('Misérables, Les '))
-    print(transform_title('Good, the Bad and the Ugly, The'))
-    print(transform_title('Lust, Caution (Se, jie) (2007)'))
+    print(movies.shape)
+    for n in range(20):
+        print(f'Starts {time()}')
+        sampled = movies.sample(n=30, weights=movies.numRatings)
+        print(sampled)

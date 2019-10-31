@@ -115,8 +115,8 @@ def handle_actor_chunk(chunk):
     return succeeded
 
 
-def _handle_chunks(fn, chunks):
-    executor = ThreadPoolExecutor(max_workers=15)
+def handle_chunks(fn, chunks, workers=15):
+    executor = ThreadPoolExecutor(max_workers=workers)
     futures = []
     for chunk in chunks:
         futures.append(executor.submit(fn, chunk))
@@ -132,14 +132,14 @@ def dump_movies():
     movie_imdb = []
 
     for _, row in merged.iterrows():
-        movie_imdb.append((row.movieId, str(row.imdbId).zfill(7)))
+        movie_imdb.append((row.movieId, row.imdbId))
 
     print(f'Expected movies: {len(movie_imdb)}')
 
     # Partition into n groups
     movie_imdb = split_into_chunks(movie_imdb, 50)
     
-    print(f'Sum succeeded: {_handle_chunks(handle_movie_chunk, movie_imdb)}')
+    print(f'Sum succeeded: {handle_chunks(handle_movie_chunk, movie_imdb)}')
 
 
 def dump_actors():
@@ -152,7 +152,7 @@ def dump_actors():
 
     actors = split_into_chunks(list(actor_ids), 50)
 
-    print(f'Sum succeeded: {_handle_chunks(handle_actor_chunk, actors)}')
+    print(f'Sum succeeded: {handle_chunks(handle_actor_chunk, actors)}')
 
 
 if __name__ == "__main__":
