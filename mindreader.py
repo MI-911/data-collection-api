@@ -16,8 +16,8 @@ app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-MIN_QUESTIONS = 10
-MINIMUM_SEED_SIZE = 10
+MIN_QUESTIONS = 15
+MINIMUM_SEED_SIZE = 5
 SESSION = {} 
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
@@ -137,12 +137,14 @@ def feedback():
         result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
     else:
         print('Minimum seed size met')
-        print(num_rand)
         
         parallel.append([get_unseen_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(x) for x in requested_entities]
+
+    for result in results:
+        print(len(result))
 
     no_duplicates = []
     [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
