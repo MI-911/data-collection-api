@@ -56,7 +56,7 @@ def _get_samples():
 def _get_movie_from_row(row):
     res = {
         'name': f'{row["title"]} ({row["year"]})',
-        'id': f'{row["imdbId"]}',
+        'image': f'https://www.mindreader.tech/static/movie/{row["imdbId"]}',
         'uri': f'{row["uri"]}',
         'resource': "movie",
         'description': "Movie",

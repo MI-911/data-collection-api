@@ -72,7 +72,7 @@ def _get_unseen_entities(tx, source_uris, seen, limit):
             ORDER BY r.pagerank DESC, m.pagerank DESC
               WITH r, collect(DISTINCT m)[..5] as movies
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-              r.uri AS uri,r.name AS name, r:Genre as genre, movies
+              r.uri AS uri,r.name AS name, r:Genre as genre, r.image AS image, movies
             """
 
     return tx.run(query, suris=source_uris, seen=seen, lim=limit)
@@ -114,7 +114,7 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
         ORDER BY score DESC, m.pagerank DESC
             WITH r, collect(DISTINCT m)[..5] as movies, score
         RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-            r.uri AS uri, r.name AS name, r:Genre as genre, movies, score
+            r.uri AS uri, r.name AS name, r:Genre as genre, r.image AS image, movies, score
         """
 
     return tx.run(q, uris=uri_list, seen=seen_uri_list)
