@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -9,17 +10,20 @@ from flask_cors import CORS
 import time
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
+from rename_files import rename_actors, rename_movies
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 
 app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-MAX_QUESTIONS = 5
-MINIMUM_SEED_SIZE = 10
+MIN_QUESTIONS = 15
+MINIMUM_SEED_SIZE = 5
 SESSION = {} 
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
+
+UUID_LENGTH = 36
 
 LIKED = 'liked'
 DISLIKED = 'disliked'
@@ -45,14 +49,14 @@ def get_profile(actor):
 
 
 def _get_samples():
-    samples = dataset.sample(5, get_seen_entities())
+    samples = dataset.sample(5, get_cross_session_seen_entities())
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
 def _get_movie_from_row(row):
     res = {
         'name': f'{row["title"]} ({row["year"]})',
-        'id': f'{row["imdbId"]}',
+        'image': f'https://www.mindreader.tech/static/movie/{row["imdbId"]}',
         'uri': f'{row["uri"]}',
         'resource': "movie",
         'description': "Movie",
@@ -80,7 +84,7 @@ def _has_both_sentiments():
 
 
 def is_done():
-    return len(get_liked_entities()) >= MAX_QUESTIONS and len(get_disliked_entities()) >= MAX_QUESTIONS
+    return len(get_rated_entities()) >= MIN_QUESTIONS
 
 
 @app.route('/api/feedback', methods=['POST'])
@@ -88,7 +92,7 @@ def feedback():
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
 
-    seen_entities = get_seen_entities()
+    seen_entities = get_cross_session_seen_entities()
 
     rated_entities = get_rated_entities()
 
@@ -107,8 +111,8 @@ def feedback():
 
         return jsonify({
             'prediction': True, 
-            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res], 
-            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
+            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:5],
+            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:5]
         })
 
     parallel = []
@@ -126,20 +130,27 @@ def feedback():
     random_entities = _get_samples()[:num_rand]
 
     if len(rated_entities) < MINIMUM_SEED_SIZE:
+        print('Less than minimum seed size')
+
         # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
     else:
-        parallel.append([get_unseen_entities, random_entities, seen_entities, num_rand])
+        print('Minimum seed size met')
+        
+        parallel.append([get_unseen_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(x) for x in requested_entities]
 
+    for result in results:
+        print(len(result))
+
     no_duplicates = []
     [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
 
-    shuffle(no_duplicates)
+    no_duplicates = sorted(no_duplicates, key=lambda x: x['description'])
 
     return jsonify(no_duplicates)
 
@@ -162,7 +173,8 @@ def get_next_entities(parallel):
 
 def get_related_entities(entities, seen_entities):
     liked_relevant = get_relevant_neighbors(entities, seen_entities)
-    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3, n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
+    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3,
+                                                     n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
     return liked_relevant_list
 
 
@@ -185,6 +197,9 @@ def update_session(liked, disliked, unknown):
                 UNKNOWN: [],
                 TIMESTAMPS: []
             }
+
+        if len(header) > UUID_LENGTH:
+            set_all_sessions(header)
 
     SESSION[header][TIMESTAMPS] += [time.time()]
     SESSION[header][LIKED] += list(liked)
@@ -241,6 +256,41 @@ def get_disliked_entities():
 
 def get_authorization():
     return request.headers.get("Authorization")
+
+
+def get_cross_session_seen_entities():
+    header = get_authorization()
+
+    if header not in SESSION:
+        return []
+
+    return get_cross_session_entities_generic(header, LIKED) + \
+           get_cross_session_entities_generic(header, DISLIKED) + \
+           get_cross_session_entities_generic(header, UNKNOWN)
+
+
+def get_cross_session_entities_generic(header, type):
+    results = []
+    head = header.split('+')[0]
+    for key, value in SESSION.items():
+        if key.startswith(head):
+            results.extend(value[type])
+
+    print(f'Results {results}')
+    return results
+
+
+def set_all_sessions(header):
+    head = header.split('+')[0]  # Get initial head
+
+    # Match all headers containing initial head
+    for filename in glob.glob(os.path.join(SESSION_PATH, f'{head}+*.json')):
+        with open(filename, 'r') as f:
+            h = os.path.basename(os.path.splitext(filename)[0])
+            if h == header:
+                continue
+
+            SESSION[h] = json.load(f)
 
 
 if __name__ == "__main__":

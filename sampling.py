@@ -52,27 +52,38 @@ def get_resource(record):
 
 
 def get_id(record):
-    if _person(record):
-        return get_actor_id(record['name'])
-    elif record['movie']:
-        return _movie_from_uri(record['uri']['movieId'])
+    if _person(record) or record['movie']:
+        return record['imdb']
 
     return None
 
 
+def get_image(record):
+    print(record)
+    if record['image']:
+        return record['image']
+    elif record['movie']:
+        return f'https://www.mindreader.tech/static/movie/{record["imdb"]}'
+    elif _person(record):
+        return f'https://www.mindreader.tech/static/actor/{record["imdb"]}'
+
+    pass
+
+
 def record_to_entity(record):
     return {
-        "name": record['name'] if record['name'] else record['label'],
-        "id": get_id(record),
+        "name": record['name'],
         "resource": get_resource(record),
         "uri": record['uri'],
+        "image": get_image(record),
         "description": get_description(record),
         "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
 
+
 def _movie_from_uri(uri):
     row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
     return {
-        attr : val 
+        attr: val
         for attr, val in zip(movies.columns, next(row, []))
     }

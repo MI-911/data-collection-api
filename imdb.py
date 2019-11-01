@@ -8,11 +8,11 @@ from dump_imdb import actors_directory
 
 
 def get_actor_soup(actor_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/name/nm{actor_id}').text, features='lxml')
+    return BeautifulSoup(requests.get(f'https://m.imdb.com/name/{actor_id}').text, features='lxml')
 
 
 def get_movie_soup(movie_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/title/tt{movie_id}').text, features='lxml')
+    return BeautifulSoup(requests.get(f'https://imdb.com/title/{movie_id}').text, features='lxml')
 
 
 def get_actors(soup):
@@ -48,7 +48,15 @@ def get_movie_poster(soup):
 
 
 def get_actor_poster(soup):
-    poster = soup.find('img', attrs={'id': 'name-poster'})
+    media_left = soup.find('a', attrs={'class': 'media-left'})
+    if not media_left:
+        return None
+
+    media = BeautifulSoup(requests.get(f'https://m.imdb.com{media_left["href"]}').text)
+    if not media:
+        return None
+
+    poster = media.find('img', attrs={'class': 'pswp__img--placeholder'})
     if not poster:
         return None
 

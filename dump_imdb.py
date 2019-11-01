@@ -1,18 +1,19 @@
-from time import sleep
+import threading
+from concurrent.futures import ThreadPoolExecutor
+
+import tqdm
 
 from dataset import movies, links
 from imdb import *
-import os
-import threading
-import requests
-import json
-from concurrent.futures import ThreadPoolExecutor, wait
 
 csv_writer_lock = threading.Lock()
+actor_writer_lock = threading.Lock()
 merged = movies.merge(links, on='movieId')
 image_directory = 'movie_images'
 actors_directory = 'movie_actors'
 actor_images_directory = 'actor_images'
+existing_actors_file = 'existing_actors.json'
+existing_actors = []
 
 if not os.path.exists(image_directory):
     os.makedirs(image_directory)
@@ -26,12 +27,12 @@ if not os.path.exists(actor_images_directory):
     os.makedirs(actor_images_directory)
 
 
-def get_image_path(movieId):
-    return os.path.join(image_directory, f'{movieId}.jpg')
+def get_image_path(movie_id):
+    return os.path.join(image_directory, f'{movie_id}.jpg')
 
 
-def get_actors_path(movieId):
-    return os.path.join(actors_directory, f'{movieId}.json')
+def get_actors_path(movie_id):
+    return os.path.join(actors_directory, f'{movie_id}.json')
 
 
 def get_actor_image_path(actor_id):
@@ -56,51 +57,36 @@ def save_url_to_file(url, file):
             handle.write(block)
 
 
-def handle_movie(movie_id, imdb_id):
-    soup = get_movie_soup(imdb_id)
+def handle_movie(imdb_id):
+    try:
+        soup = get_movie_soup(imdb_id)
 
-    # Save poster
-    image_url = get_image_path(soup)
-    if image_url:
-        save_url_to_file(get_movie_poster(soup), get_image_path(movie_id))
-    else:
-        return False
-
-    # Save list of actor ids
-    actors = get_actors(soup)
-    if actors and len(actors) > 0:
-        with open(get_actors_path(movie_id), 'w') as outFile:
-            json.dump(actors, outFile)
-    else:
-        return False
-
-    return True
+        # Save poster
+        image_url = get_image_path(soup)
+        if image_url:
+            save_url_to_file(get_movie_poster(soup), get_image_path(imdb_id))
+    except Exception as e:
+        print(f'{imdb_id} failed: {e}')
 
 
 def handle_actor(actor_id):
     soup = get_actor_soup(actor_id)
-
-    # Save poster
-    poster = get_actor_poster(soup)
-    if poster:
-        save_url_to_file(poster, get_actor_image_path(actor_id))
+    if soup.find('img', attrs={'class': 'no-pic-image'}):
+        existing_actors.append(actor_id)
+        print(f'No picture {actor_id}')
+        return True
     else:
-        print(actor_id)
-        return False
-    
-    return True
+        # Save poster
+        poster = get_actor_poster(soup)
+        if poster:
+            save_url_to_file(poster, get_actor_image_path(actor_id))
 
+            existing_actors.append(actor_id)
+        else:
+            print(actor_id)
+            return False
 
-def handle_movie_chunk(chunk):
-    succeeded = 0
-    for movie_id, imdb_id in chunk:
-        try:
-            if handle_movie(movie_id, imdb_id):
-                succeeded += 1
-        except Exception as e:
-            print(f'{movie_id}/{imdb_id} failed: {e}')
-
-    return succeeded
+        return True
 
 
 def handle_actor_chunk(chunk):
@@ -112,48 +98,67 @@ def handle_actor_chunk(chunk):
         except Exception as e:
             print(f'{actor_id} failed: {e}')
 
+    write_existing_actors()
+
     return succeeded
 
 
-def handle_chunks(fn, chunks, workers=15):
-    executor = ThreadPoolExecutor(max_workers=workers)
+def _handle_chunks(fn, chunks):
+    executor = ThreadPoolExecutor(max_workers=50)
     futures = []
     for chunk in chunks:
         futures.append(executor.submit(fn, chunk))
 
-    sum_succeeded = 0
-    for future in futures:
-        sum_succeeded += future.result()
-
-    return sum_succeeded
+    for future in tqdm.tqdm(futures):
+        future.result()
 
 
 def dump_movies():
-    movie_imdb = []
+    existing = set()
+    for r, d, f in os.walk(image_directory):
+        for file in f:
+            movie_id = file.split('.')[0]
+            if movie_id not in existing:
+                existing.add(movie_id)
 
-    for _, row in merged.iterrows():
-        movie_imdb.append((row.movieId, row.imdbId))
+    missing = set(movies.imdbId).difference(existing)
 
-    print(f'Expected movies: {len(movie_imdb)}')
+    _handle_chunks(handle_movie, missing)
 
-    # Partition into n groups
-    movie_imdb = split_into_chunks(movie_imdb, 50)
-    
-    print(f'Sum succeeded: {handle_chunks(handle_movie_chunk, movie_imdb)}')
+
+def write_existing_actors():
+    with actor_writer_lock:
+        with open(existing_actors_file, 'w') as fp:
+            json.dump(existing_actors, fp)
+
+
+def read_existing_actors():
+    if not os.path.exists(existing_actors_file):
+        return []
+
+    with open(existing_actors_file, 'r') as fp:
+        return json.load(fp)
 
 
 def dump_actors():
-    actor_ids = get_actor_ids()
-    existing = set()
+    print(len(existing_actors))
 
+    existing = set()
     for r, d, f in os.walk(actor_images_directory):
         for file in f:
-            existing.add(file.split('.')[0])
+            actor_id = file.split('.')[0]
+            if actor_id not in existing:
+                existing_actors.append(actor_id)
 
-    actors = split_into_chunks(list(actor_ids), 50)
+    actor_ids = get_actor_ids().symmetric_difference(set(existing_actors))
+    print(len(actor_ids))
+    actors = split_into_chunks(list(actor_ids), 1000)
 
-    print(f'Sum succeeded: {handle_chunks(handle_actor_chunk, actors)}')
+    print(f'Sum succeeded: {_handle_chunks(handle_actor_chunk, actors)}')
 
 
 if __name__ == "__main__":
-    dump_actors()
+    # existing_actors = read_existing_actors()
+    # dump_actors()
+    # dump_movies()
+    handle_actor('nm0001618')

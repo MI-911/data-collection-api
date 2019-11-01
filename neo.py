@@ -13,8 +13,8 @@ def _get_last_batch(tx, source_uris, seen):
             WITH m.uri AS uri, m.pagerank AS pr,  count(r) AS connected
             WITH collect({uri: uri, pr: pr, c: connected}) as movies, sum(connected) AS total
             UNWIND movies as m
-            WITH collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
-        MATCH (r:MovieRelated)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
+            WITH collect({uri: m.uri, pr: m.pr, c: 1.0 * m.c / total}) as movies
+        MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
             WITH movies, m.uri AS uri, m.pagerank AS pr,  count(r) AS connected
             WITH movies, collect({uri: uri, pr: pr, c: connected}) AS movies2, sum(connected) AS total
             UNWIND movies2 as m
@@ -59,17 +59,21 @@ def _get_schema_label(node):
 
 def _get_unseen_entities(tx, source_uris, seen, limit):
     query = """ 
-    MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
-        WITH DISTINCT r, id(r) AS id
-    ORDER BY r.pagerank
-    LIMIT $lim
-    MATCH (r)<--(m:Movie) WHERE id(r) = id
-        WITH r, m
-    ORDER BY r.pagerank DESC, m.pagerank DESC
-        WITH r, collect(DISTINCT m)[..5] as movies
-    RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-           r.uri AS uri, r.name AS name, r:Genre as genre, movies
-    """
+            MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
+              WITH DISTINCT r
+            ORDER BY r.pagerank DESC
+              WITH LABELS(r)[1] AS label, COLLECT(r)[..3] AS nodes
+              UNWIND nodes AS n WITH n
+            ORDER BY n.pagerank DESC
+              LIMIT $lim
+              WITH id(n) AS id
+            MATCH (r)<--(m:Movie) WHERE id(r) = id
+              WITH r, m
+            ORDER BY r.pagerank DESC, m.pagerank DESC
+              WITH r, collect(DISTINCT m)[..5] as movies
+            RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
+              r.uri AS uri,r.name AS name, r:Genre as genre, r.image AS image, movies
+            """
 
     return tx.run(query, suris=source_uris, seen=seen, lim=limit)
 
@@ -99,21 +103,18 @@ def create_genre(genre, uri):
 
 
 def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
+    print('Get relevant')
     q = """
-        MATCH (n:Movie) WHERE n.uri IN $uris WITH collect(n) AS movies
-        CALL algo.pageRank.stream(
-          null,
-          null,
-          {iterations: 50, dampingFactor: 0.95, sourceNodes: movies, direction: 'BOTH'}
-        ) YIELD nodeId, score
-        MATCH (m) where id(m) = nodeId AND NOT m.uri in $seen AND NOT m:Movie
-            WITH id(m) as id, score
+        MATCH (n)--(m) WHERE n.uri IN $uris WITH id(m) AS nodeId
+        MATCH (m) WHERE id(m) = nodeId AND NOT m.uri IN $seen
+            WITH DISTINCT id(m) AS id, m.pagerank AS score
         ORDER BY score DESC LIMIT 50
-        MATCH (r:MovieRelated)<--(m:Movie) WHERE id(r) = id
-            WITH r, m, score
+        OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
+            WITH algo.asNode(id) AS r, m, score
         ORDER BY score DESC, m.pagerank DESC
             WITH r, collect(DISTINCT m)[..5] as movies, score
         RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-               r.uri AS uri, r.name AS name, r:Genre as genre, movies, score"""
+            r.uri AS uri, r.name AS name, r:Genre as genre, r.image AS image, movies, score
+        """
 
     return tx.run(q, uris=uri_list, seen=seen_uri_list)
