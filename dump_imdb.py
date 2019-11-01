@@ -160,4 +160,5 @@ def dump_actors():
 if __name__ == "__main__":
     # existing_actors = read_existing_actors()
     # dump_actors()
-    dump_movies()
+    # dump_movies()
+    handle_actor('nm0001618')

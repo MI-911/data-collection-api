@@ -58,12 +58,24 @@ def get_id(record):
     return None
 
 
+def get_image(record):
+    print(record)
+    if record['image']:
+        return record['image']
+    elif record['movie']:
+        return f'https://www.mindreader.tech/static/movie/{record["imdb"]}'
+    elif _person(record):
+        return f'https://www.mindreader.tech/static/actor/{record["imdb"]}'
+
+    pass
+
+
 def record_to_entity(record):
     return {
         "name": record['name'],
-        "id": get_id(record),
         "resource": get_resource(record),
         "uri": record['uri'],
+        "image": get_image(record),
         "description": get_description(record),
         "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
