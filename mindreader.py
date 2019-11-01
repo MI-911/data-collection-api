@@ -1,3 +1,4 @@
+import glob
 import json
 import os
 from concurrent.futures import ThreadPoolExecutor, wait
@@ -21,6 +22,8 @@ MINIMUM_SEED_SIZE = 5
 SESSION = {} 
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
+
+UUID_LENGTH = 36
 
 LIKED = 'liked'
 DISLIKED = 'disliked'
@@ -89,7 +92,7 @@ def feedback():
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
 
-    seen_entities = get_seen_entities()
+    seen_entities = get_cross_session_seen_entities()
 
     rated_entities = get_rated_entities()
 
@@ -195,6 +198,9 @@ def update_session(liked, disliked, unknown):
                 TIMESTAMPS: []
             }
 
+        if len(header) > UUID_LENGTH:
+            set_all_sessions(header)
+
     SESSION[header][TIMESTAMPS] += [time.time()]
     SESSION[header][LIKED] += list(liked)
     SESSION[header][DISLIKED] += list(disliked)
@@ -250,6 +256,41 @@ def get_disliked_entities():
 
 def get_authorization():
     return request.headers.get("Authorization")
+
+
+def get_cross_session_seen_entities():
+    header = get_authorization()
+
+    if header not in SESSION:
+        return []
+
+    return get_cross_session_entities_generic(header, LIKED) + \
+           get_cross_session_entities_generic(header, DISLIKED) + \
+           get_cross_session_entities_generic(header, UNKNOWN)
+
+
+def get_cross_session_entities_generic(header, type):
+    results = []
+    head = header.split('+')[0]
+    for key, value in SESSION.items():
+        if key.startswith(head):
+            results.extend(value[type])
+
+    print(f'Results {results}')
+    return results
+
+
+def set_all_sessions(header):
+    head = header.split('+')[0]  # Get initial head
+
+    # Match all headers containing initial head
+    for filename in glob.glob(os.path.join(SESSION_PATH, f'{head}+*.json')):
+        with open(filename, 'r') as f:
+            h = os.path.basename(os.path.splitext(filename)[0])
+            if h == header:
+                continue
+
+            SESSION[h] = json.load(f)
 
 
 if __name__ == "__main__":
