@@ -1,3 +1,4 @@
+import gc
 import json
 import os
 import re
@@ -136,6 +137,10 @@ movies = movies.merge(mapping, on='imdbId')
 for df in [movies, ratings, links]:
     df.sort_values(by='movieId', inplace=True)
     df.reset_index(inplace=True, drop=True)
+
+# Free ratings from memory
+del ratings
+gc.collect()
 
 if __name__ == "__main__":
     print(movies.shape)
