@@ -1,16 +1,14 @@
 import glob
 import json
 import os
+import time
 from concurrent.futures import ThreadPoolExecutor, wait
-from random import shuffle
 
-from flask import Flask, jsonify, request, send_from_directory
+from flask import Flask, jsonify, request, send_from_directory, abort
 from flask_cors import CORS
 
-import time
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
-from rename_files import rename_actors, rename_movies
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 
 app = Flask(__name__)
@@ -19,7 +17,7 @@ cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MIN_QUESTIONS = 15
 MINIMUM_SEED_SIZE = 5
-SESSION = {} 
+SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
 
@@ -67,9 +65,12 @@ def _get_movie_from_row(row):
 
 @app.route('/api/movies')
 def movies():
+    if is_invalid_request():
+        return abort(400)
+
     # Initializes an empty but timestamped session
     update_session([], [], [])
-    
+
     return jsonify(_get_samples())
 
 
@@ -89,6 +90,9 @@ def is_done():
 
 @app.route('/api/feedback', methods=['POST'])
 def feedback():
+    if is_invalid_request():
+        return abort(400)
+
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
 
@@ -110,7 +114,7 @@ def feedback():
         print(f'd: {disliked_res}')
 
         return jsonify({
-            'prediction': True, 
+            'prediction': True,
             'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:5],
             'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:5]
         })
@@ -138,7 +142,7 @@ def feedback():
         result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
     else:
         print('Minimum seed size met')
-        
+
         parallel.append([get_unseen_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
@@ -230,28 +234,32 @@ def get_seen_entities():
 def get_rated_entities():
     header = get_authorization()
 
-    if header not in SESSION: 
+    if header not in SESSION:
         return []
-        
+
     return get_liked_entities() + get_disliked_entities()
 
 
 def get_liked_entities():
     header = get_authorization()
 
-    if header not in SESSION: 
+    if header not in SESSION:
         return []
-        
+
     return SESSION[header][LIKED]
 
 
 def get_disliked_entities():
     header = get_authorization()
 
-    if header not in SESSION: 
+    if header not in SESSION:
         return []
-        
+
     return SESSION[header][DISLIKED]
+
+
+def is_invalid_request():
+    return get_authorization() is None
 
 
 def get_authorization():
