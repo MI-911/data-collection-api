@@ -121,7 +121,7 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
-movies['weight'] = [1 + np.log2(max(1, year - 1990)) for year in movies['year']] * movies['numRatings']
+movies['weight'] = [max(1, year - 2000) for year in movies['year']] * movies['numRatings']
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')
