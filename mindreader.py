@@ -124,7 +124,6 @@ def feedback():
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
 
-
         return jsonify({
             'prediction': True,
             'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:5],
