@@ -120,7 +120,6 @@ def feedback():
         for uri in set(liked_res).intersection(set(disliked_res)):
             liked_res = list(filter(lambda u: u != uri, liked_res))
             disliked_res = list(filter(lambda u: u != uri, disliked_res))
-            print(f'Should not be in list {uri}, in list = {uri in liked_res}, {uri in disliked_res}')
 
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
