@@ -88,6 +88,13 @@ def is_done():
     return len(get_rated_entities()) >= MIN_QUESTIONS
 
 
+@app.route('/api/final', methods=['POST'])
+def update_session_wrapper():
+    json_data = request.json
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
+    return jsonify('Mah Man! You know inspect mode!')
+
+
 @app.route('/api/feedback', methods=['POST'])
 def feedback():
     if is_invalid_request():
