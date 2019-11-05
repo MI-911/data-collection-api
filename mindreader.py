@@ -47,7 +47,7 @@ def get_profile(actor):
 
 
 def _get_samples():
-    samples = dataset.sample(5, get_cross_session_seen_entities())
+    samples = dataset.sample(6, get_cross_session_seen_entities())
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
@@ -124,10 +124,11 @@ def feedback():
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
 
+
         return jsonify({
             'prediction': True,
-            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:5],
-            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:5]
+            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:2] + samples[:3],
+            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:2] + samples[3:6]
         })
 
     parallel = []
