@@ -113,7 +113,7 @@ def handle_actor_chunk(chunk):
 
 
 def _handle_chunks(fn, chunks):
-    executor = ThreadPoolExecutor(max_workers=150)
+    executor = ThreadPoolExecutor(max_workers=100)
     futures = []
     for chunk in chunks:
         futures.append(executor.submit(fn, chunk))
@@ -168,5 +168,5 @@ if __name__ == "__main__":
     # existing_actors = read_existing_actors()
     # dump_actors()
     # dump_movies()
-    # dump_actors()
-    handle_actor('nm0293589')
+    dump_actors()
+    #handle_actor('nm0293589')

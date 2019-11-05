@@ -56,8 +56,9 @@ def get_actor_poster(soup):
 
 
 def get_actor_ids():
-    return set(pd.read_csv('wikidata/people.csv').imdb)
+    with open('data/actors.json', 'r') as fp:
+        return set(json.load(fp))
 
 
 if __name__ == "__main__":
-    print(get_actor_ids())
+    print(len(get_actor_ids()))
