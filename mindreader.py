@@ -41,8 +41,6 @@ def get_poster(movie):
 
 @app.route('/static/actor/<actor>')
 def get_profile(actor):
-    print(f'{actor} requested')
-
     return send_from_directory('actor_images', f'{actor}.jpg')
 
 
@@ -164,17 +162,9 @@ def feedback():
     for result in results:
         print(len(result))
 
-    no_duplicates = []
-    [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
-
-    no_duplicates = sorted(no_duplicates, key=lambda x: x['description'])
+    no_duplicates = sorted({r['uri']: r for r in result_entities}.values(), key=lambda x: x['description'])
 
     return jsonify(no_duplicates)
-
-
-@app.route('/api')
-def main():
-    return 'test'
 
 
 def get_next_entities(parallel):

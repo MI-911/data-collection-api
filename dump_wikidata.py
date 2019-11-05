@@ -225,7 +225,7 @@ def write_companies():
 
         for key, value in companies.items():
             if key not in existing_uris:
-                writer.writerow({'uri:ID': key, 'name': value, ':LABEL': 'Company'})
+                writer.writerow({'uri:ID': key, 'name': value.title(), ':LABEL': 'Company'})
 
 
 def write_categories():
