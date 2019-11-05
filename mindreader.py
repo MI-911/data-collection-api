@@ -124,6 +124,7 @@ def feedback():
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
 
+        samples = _get_samples()
 
         return jsonify({
             'prediction': True,
