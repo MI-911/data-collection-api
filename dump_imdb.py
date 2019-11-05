@@ -5,6 +5,7 @@ import tqdm
 
 from dataset import movies, links
 from imdb import *
+from PIL import Image
 
 csv_writer_lock = threading.Lock()
 actor_writer_lock = threading.Lock()
@@ -44,7 +45,9 @@ def split_into_chunks(lst, n):
 
 
 def save_url_to_file(url, file):
-    with open(file, 'wb') as handle:
+    tmp_file = f'{file}.src'
+
+    with open(tmp_file, 'wb') as handle:
         response = requests.get(url, stream=True)
 
         if not response.ok:
@@ -55,6 +58,17 @@ def save_url_to_file(url, file):
                 break
 
             handle.write(block)
+
+    try:
+        image = Image.open(tmp_file)
+        new_height = 268
+        new_width = int(new_height * image.size[0] / image.size[1])
+        image = image.resize((new_width, new_height), Image.ANTIALIAS)
+        image.save(file)
+
+        os.remove(tmp_file)
+    except IOError as error:
+        print(error)
 
 
 def handle_movie(imdb_id):
@@ -154,4 +168,5 @@ if __name__ == "__main__":
     # existing_actors = read_existing_actors()
     # dump_actors()
     # dump_movies()
-    dump_actors()
+    # dump_actors()
+    handle_actor('nm0293589')
