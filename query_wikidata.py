@@ -14,6 +14,11 @@ subject_query = """SELECT ?subject ?subjectLabel WHERE {
                    wd:%s wdt:P921 ?subject.
                  }"""
 
+company_query = """SELECT ?company ?companyLabel WHERE {
+                   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                   wd:%s wdt:P272 ?company.
+                 }"""
+
 actor_query = """SELECT ?actor ?actorLabel ?actorImdb ?actorImage WHERE {
                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                    {wd:%s wdt:P161 ?actor} UNION {wd:%s wdt:P725 ?actor}.
@@ -58,6 +63,15 @@ def get_subjects(entity_id):
     return subjects
 
 
+def get_companies(entity_id):
+    companies = dict()
+
+    for result in get_results(company_query % entity_id):
+        companies[result['company']['value']] = result['companyLabel']['value']
+
+    return companies
+
+
 def get_people(entity_id):
     actors = dict()
     directors = dict()
@@ -82,6 +96,7 @@ def get_people(entity_id):
 
 
 if __name__ == "__main__":
+    print(get_companies('Q171048'))
     actors, directors = get_people('Q171048')
     print(actors)
     print(directors)

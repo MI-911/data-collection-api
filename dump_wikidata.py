@@ -9,10 +9,12 @@ import csv
 from tqdm import tqdm
 
 from dataset import movies
-from query_wikidata import get_genres, get_people, get_subjects
+from query_wikidata import get_genres, get_people, get_subjects, get_companies
 
 base_path = 'wikidata'
+csv_path = os.path.join(base_path, 'csv')
 subjects_path = os.path.join(base_path, 'subjects.json')
+companies_path = os.path.join(base_path, 'companies.json')
 genres_path = os.path.join(base_path, 'genres.json')
 people_path = os.path.join(base_path, 'people.json')
 movie_genres_path = os.path.join(base_path, 'movie_genres.json')
@@ -20,13 +22,16 @@ movie_directors_path = os.path.join(base_path, 'movie_directors.json')
 movie_actors_path = os.path.join(base_path, 'movie_actors.json')
 movie_uri_path = os.path.join(base_path, 'movie_uri.json')
 movie_subjects_path = os.path.join(base_path, 'movie_subjects.json')
+movie_companies_path = os.path.join(base_path, 'movie_companies.json')
 
 genres = dict()
 subjects = dict()
 people = dict()
+companies = dict()
+movie_companies = dict()
 movie_directors = dict()
 movie_actors = dict()
-movie_genres = json.load(open(movie_genres_path, 'r'))
+movie_genres = dict()
 movie_subjects = dict()
 movie_uri = json.load(open(movie_uri_path, 'r'))
 seen_uris = set() # set(movie_uri.values())
@@ -66,6 +71,30 @@ def dump_subjects():
 
     with open(movie_subjects_path, 'w') as fp:
         json.dump(movie_subjects, fp)
+
+
+def dump_companies():
+    def handle(value):
+        try:
+            result = get_companies(entity_ids[value])
+        except URLError:
+            sleep(2.5)
+            return handle(value)
+
+        with lock:
+            for key in result.keys():
+                if key not in companies:
+                    companies[key] = result[key]
+
+        movie_companies[value] = list(result.keys())
+
+    handle_chunks(handle, movies[movies.imdbId.isin(entity_ids.keys())].imdbId)
+
+    with open(companies_path, 'w') as fp:
+        json.dump(companies, fp)
+
+    with open(movie_companies_path, 'w') as fp:
+        json.dump(movie_companies, fp)
 
 
 def dump_genres():
@@ -148,7 +177,7 @@ def get_unmatched_movie_genres():
 def write_movies():
     uris = json.load(open(movie_uri_path, 'r'))
 
-    with open(os.path.join(base_path, 'movies.csv'), 'w') as fp:
+    with open(os.path.join(csv_path, 'movies.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, ['uri:ID', 'name', 'year:int', 'imdb', ':LABEL'])
         writer.writeheader()
 
@@ -159,13 +188,55 @@ def write_movies():
             writer.writerow({'uri:ID': uris[movie.imdbId], 'name': movie.title, 'year:int': movie.year, 'imdb': movie.imdbId, ':LABEL': 'Movie'})
 
 
+def write_decades():
+    uris = json.load(open(movie_uri_path, 'r'))
+    decades = set()
+
+    with open(os.path.join(csv_path, 'decades.csv'), 'w') as decades_fp, \
+            open(os.path.join(csv_path, 'movie_decade.csv'), 'w') as movie_decades_fp:
+        decades_writer = csv.DictWriter(decades_fp, ['uri:ID', 'name', ':LABEL'])
+        decades_writer.writeheader()
+
+        movie_decade_writer = csv.DictWriter(movie_decades_fp, [':START_ID', ':END_ID', ':TYPE'])
+        movie_decade_writer.writeheader()
+
+        for index, movie in movies.iterrows():
+            if movie.imdbId not in uris:
+                continue
+
+            decade = int(movie.year / 10) * 10
+            decade_uri = f'Decade-{decade}'
+            if decade not in decades:
+                decades.add(decade)
+                decades_writer.writerow({'uri:ID': f'Decade-{decade}', 'name': f'Movies of the {decade}s',
+                                         ':LABEL': 'Decade'})
+
+            movie_decade_writer.writerow({':START_ID': uris[movie.imdbId], ':END_ID': decade_uri, ':TYPE': 'FROM_DECADE'})
+
+
+def write_companies():
+    companies = json.load(open(companies_path, 'r'))
+    existing_uris = set(json.load(open(people_path, 'r')).keys())
+    existing_uris = existing_uris.union(set(movie_uri.values()))
+
+    with open(os.path.join(csv_path, 'companies.csv'), 'w') as fp:
+        writer = csv.DictWriter(fp, ['uri:ID', 'name', ':LABEL'])
+        writer.writeheader()
+
+        for key, value in companies.items():
+            if key not in existing_uris:
+                writer.writerow({'uri:ID': key, 'name': value, ':LABEL': 'Company'})
+
+
 def write_categories():
     genres = json.load(open(genres_path, 'r'))
     subjects = json.load(open(subjects_path, 'r'))
-    # People and movies can be subjects, we should not write them twice
-    existing_uris = set(json.load(open(people_path, 'r')).keys()).union(set(movie_uri.values()))
+    # People, companies and movies can be subjects, we should not write them twice
+    existing_uris = set(json.load(open(companies_path, 'r')).keys())
+    existing_uris = existing_uris.union(set(json.load(open(people_path, 'r')).keys()))
+    existing_uris = existing_uris.union(set(movie_uri.values()))
 
-    with open(os.path.join(base_path, 'categories.csv'), 'w') as fp:
+    with open(os.path.join(csv_path, 'categories.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, ['uri:ID', 'name', ':LABEL'])
         writer.writeheader()
 
@@ -180,11 +251,27 @@ def write_categories():
                 seen_uris.add(key)
 
 
+def write_movie_companies():
+    movie_companies = json.load(open(movie_companies_path, 'r'))
+    movie_uri = json.load(open(movie_uri_path, 'r'))
+
+    with open(os.path.join(csv_path, 'movie_company.csv'), 'w') as fp:
+        writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
+        writer.writeheader()
+
+        for key, value in movie_companies.items():
+            if not value or key not in movie_uri:
+                continue
+
+            for tail in value:
+                writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'PRODUCED_BY'})
+
+
 def write_movie_subjects():
     movie_subjects = json.load(open(movie_subjects_path, 'r'))
     movie_uri = json.load(open(movie_uri_path, 'r'))
 
-    with open(os.path.join(base_path, 'movie_subject.csv'), 'w') as fp:
+    with open(os.path.join(csv_path, 'movie_subject.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
@@ -200,7 +287,7 @@ def write_movie_genres():
     movie_genres = json.load(open(movie_genres_path, 'r'))
     movie_uri = json.load(open(movie_uri_path, 'r'))
 
-    with open(os.path.join(base_path, 'movie_genre.csv'), 'w') as fp:
+    with open(os.path.join(csv_path, 'movie_genre.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
@@ -216,7 +303,7 @@ def _write_movie_person(source, dest, relation, valid_people):
     movie_persons = json.load(open(source, 'r'))
     movie_uri = json.load(open(movie_uri_path, 'r'))
 
-    with open(os.path.join(base_path, dest), 'w') as fp:
+    with open(os.path.join(csv_path, dest), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
@@ -233,7 +320,7 @@ def write_people():
     people = json.load(open(people_path, 'r'))
     valid_people = set()
 
-    with open(os.path.join(base_path, 'people.csv'), 'w') as fp:
+    with open(os.path.join(csv_path, 'people.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, ['uri:ID', 'name', 'imdb', 'image', ':LABEL'])
         writer.writeheader()
 
@@ -246,16 +333,6 @@ def write_people():
 
     _write_movie_person(movie_actors_path, 'movie_actor.csv', 'STARRING', valid_people)
     _write_movie_person(movie_directors_path, 'movie_director.csv', 'DIRECTED_BY', valid_people)
-
-
-def find_duplicate_movies():
-    uris = json.load(open(movie_uri_path, 'r'))
-
-    counted = Counter(uris.values())
-    print(counted)
-    counted = sorted(counted.items(), key=lambda i: i[1], reverse=True)[:10]
-
-    print(counted)
 
 
 def write_triples():
@@ -289,9 +366,12 @@ def write_mapping():
 
 
 if __name__ == "__main__":
+    write_companies()
+    write_movie_companies()
     write_categories()
     write_movies()
     write_movie_genres()
     write_movie_subjects()
     write_people()
     write_mapping()
+    write_decades()
