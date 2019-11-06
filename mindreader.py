@@ -15,7 +15,7 @@ app = Flask(__name__)
 app.secret_key = "XD"
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-MIN_QUESTIONS = 10
+MIN_QUESTIONS = 15
 MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
@@ -137,8 +137,8 @@ def feedback():
 
         return jsonify({
             'prediction': True,
-            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:2] + samples[:3],
-            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:2] + samples[3:6]
+            'likes': liked_res,
+            'dislikes': disliked_res
         })
 
     parallel = []
