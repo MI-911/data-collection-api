@@ -73,7 +73,7 @@ def _get_unseen_entities(tx, source_uris, seen, limit):
               WITH id(n) AS id
             MATCH (r)<--(m:Movie) WHERE id(r) = id
               WITH r, m
-            ORDER BY r.pagerank DESC, m.pagerank DESC
+            ORDER BY m.weight DESC
               WITH r, collect(DISTINCT m)[..5] as movies
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
               r:Company AS company, r:Decade AS decade, r.uri AS uri,r.name AS name, r:Genre as genre, r.image AS image,
@@ -116,7 +116,7 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
         ORDER BY score DESC LIMIT 50
         OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
             WITH algo.asNode(id) AS r, m, RAND() AS random, score
-        ORDER BY random DESC, m.pagerank DESC
+        ORDER BY m.weight DESC
             WITH r, collect(DISTINCT m)[..5] as movies, score
         RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
             r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre, r.image AS image,

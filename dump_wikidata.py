@@ -179,14 +179,15 @@ def write_movies():
     uris = json.load(open(movie_uri_path, 'r'))
 
     with open(os.path.join(csv_path, 'movies.csv'), 'w') as fp:
-        writer = csv.DictWriter(fp, ['uri:ID', 'name', 'year:int', 'imdb', ':LABEL'])
+        writer = csv.DictWriter(fp, ['uri:ID', 'name', 'weight:float', 'year:int', 'imdb', ':LABEL'])
         writer.writeheader()
 
         for index, movie in movies.iterrows():
             if movie.imdbId not in uris:
                 continue
 
-            writer.writerow({'uri:ID': uris[movie.imdbId], 'name': movie.title, 'year:int': movie.year, 'imdb': movie.imdbId, ':LABEL': 'Movie'})
+            writer.writerow({'uri:ID': uris[movie.imdbId], 'name': movie.title, 'year:int': movie.year,
+                             'imdb': movie.imdbId, 'weight:float': movie.weight, ':LABEL': 'Movie'})
 
 
 def write_decades():
@@ -386,12 +387,11 @@ def titlecase(s):
 
 
 if __name__ == "__main__":
-    # dump_genre_hierarchy()
-    # exit(0)
+    write_movies()
+    exit(0)
     write_companies()
     write_movie_companies()
     write_categories()
-    write_movies()
     write_movie_genres()
     write_movie_subjects()
     write_people()
