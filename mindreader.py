@@ -129,10 +129,10 @@ def feedback():
 
         samples = _get_samples()
 
-        liked_res = liked_res[:LAST_N_RATED_QUESTIONS]
+        liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:LAST_N_RATED_QUESTIONS]
         liked_res = liked_res + samples[:LAST_N_QUESTIONS-len(liked_res)]
 
-        disliked_res = disliked_res[:LAST_N_RATED_QUESTIONS]
+        disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:LAST_N_RATED_QUESTIONS]
         disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS-len(disliked_res)):]
 
         return jsonify({
