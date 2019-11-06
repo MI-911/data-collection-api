@@ -9,6 +9,7 @@ import csv
 from tqdm import tqdm
 
 from dataset import movies
+import re
 from query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses
 
 base_path = 'wikidata'
@@ -225,7 +226,7 @@ def write_companies():
 
         for key, value in companies.items():
             if key not in existing_uris:
-                writer.writerow({'uri:ID': key, 'name': value.title(), ':LABEL': 'Company'})
+                writer.writerow({'uri:ID': key, 'name': titlecase(value), ':LABEL': 'Company'})
 
 
 def dump_genre_hierarchy():
@@ -257,12 +258,12 @@ def write_categories():
 
         for key, value in genres.items():
             if key not in seen_uris and key not in existing_uris:
-                writer.writerow({'uri:ID': key, 'name': value.title(), ':LABEL': 'Category'})
+                writer.writerow({'uri:ID': key, 'name': titlecase(value), ':LABEL': 'Category'})
                 seen_uris.add(key)
 
         for key, value in subjects.items():
             if key not in seen_uris and key not in existing_uris:
-                writer.writerow({'uri:ID': key, 'name': value.title(), ':LABEL': 'Category'})
+                writer.writerow({'uri:ID': key, 'name': titlecase(value), ':LABEL': 'Category'})
                 seen_uris.add(key)
 
 
@@ -380,10 +381,13 @@ def write_mapping():
             writer.writerow({'imdbId': imdb, 'uri': value})
 
 
-if __name__ == "__main__":
-    dump_genre_hierarchy()
-    exit(0)
+def titlecase(s):
+    return re.sub(r"[A-Za-z]+('[A-Za-z]+)?", lambda mo: mo.group(0)[0].upper() + mo.group(0)[1:].lower(), s).replace('Lgbt', 'LGBT')
 
+
+if __name__ == "__main__":
+    # dump_genre_hierarchy()
+    # exit(0)
     write_companies()
     write_movie_companies()
     write_categories()
