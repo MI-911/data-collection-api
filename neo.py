@@ -62,7 +62,7 @@ def _get_unseen_entities(tx, source_uris, seen, limit):
             MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
               WITH DISTINCT r
             ORDER BY r.pagerank DESC
-              WITH LABELS(r)[1] AS label, COLLECT(r)[..50] AS nodes
+              WITH LABELS(r)[1] AS label, COLLECT(r)[..15] AS nodes
               UNWIND nodes AS n
               WITH label, n, RAND() AS r
             ORDER BY r
