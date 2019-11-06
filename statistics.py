@@ -128,10 +128,8 @@ def get_feedback_statistics(sessions):
             'avg': mean(lst),
             'median': median(lst),
             'std': std(lst),
-            'q75' : percentile(lst, 75),
-            'q90' : percentile(lst, 90),
-            'q95' : percentile(lst, 95),
-            'q99' : percentile(lst, 99),
+            'q1': percentile(lst, 25),
+            'q3': percentile(lst, 75)
         } for key, lst in {
             'likes': likes,
             'dislikes': dislikes,
@@ -150,10 +148,21 @@ def get_top_entities(session_set):
             category_items[category] += session[category]
 
     return {
-        category: [uri for uri, _ in Counter(items).most_common(5)]
+        category: [{'uri': uri, 'count': count} for uri, count in Counter(items).most_common(10)]
 
         for category, items in category_items.items()
     }
+
+
+def get_unique_entities(session_set):
+    categories = {'liked', 'disliked', 'unknown'}
+    items = []
+
+    for session in session_set:
+        for category in categories:
+            items += session[category]
+
+    return len(set(items))
 
 
 def compute_statistics():
@@ -171,7 +180,8 @@ def compute_statistics():
             'n_unknown': len(get_unknowns(session_set)),
             'durations': get_duration_statistics(session_set),
             'feedback': get_feedback_statistics(session_set),
-            'top': get_top_entities(session_set)
+            'top': get_top_entities(session_set),
+            'n_entities': get_unique_entities(session_set)
         }
 
         for key, session_set in {'all': sessions, 'completed': completed_sessions}.items()
