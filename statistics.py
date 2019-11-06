@@ -1,8 +1,8 @@
-import json 
-import os 
-from scipy import median, mean, sum, min, max, std
-from os.path import join 
+import json
+import os
+from os.path import join
 
+from scipy import median, mean, amin, amax, std
 
 SESSIONS_PATH = 'sessions'
 
@@ -14,7 +14,7 @@ def is_empty(session):
 def get_sessions(filter_empty=True): 
     sessions = [] 
     for session in os.listdir(SESSIONS_PATH): 
-        with open(session) as fp: 
+        with open(join(SESSIONS_PATH, session)) as fp:
             sess = json.load(fp)
             if filter_empty: 
                 if is_empty(sess): 
@@ -38,7 +38,7 @@ def get_unique_tokens(filter_final=False, filter_empty=False):
     if filter_final or filter_empty: 
         tokens = [] 
         for session_id in os.listdir(SESSIONS_PATH): 
-            with open(session_id) as fp: 
+            with open(join(SESSIONS_PATH, session_id)) as fp:
                 session = json.load(fp)
                 if filter_empty: 
                     if is_empty(session): 
@@ -80,8 +80,8 @@ def get_unknowns(sessions):
 
 def get_duration_statistics(sessions): 
     durations = get_durations(sessions)
-    _min = min(durations)
-    _max = max(durations)
+    _min = amin(durations)
+    _max = amax(durations)
     _mean = mean(durations)
     _median = median(durations)
     _std = std(durations)
@@ -109,20 +109,21 @@ def get_feedback_statistics(sessions):
         dislikes.append(_dislikes)
         unknowns.append(_unknowns)
 
-        like_to_dislike_ratios.append(_likes / _dislikes)
+        if dislikes:
+            like_to_dislike_ratios.append(_likes / _dislikes)
 
     return {
-        key : {
-            'min' : min(lst),
-            'max' : max(lst), 
-            'avg' : mean(lst),
-            'median' : median(lst),
-            'std' : std(lst)
+        key: {
+            'min': amin(lst),
+            'max': amax(lst),
+            'avg': mean(lst),
+            'median': median(lst),
+            'std': std(lst)
         } for key, lst in {
-            'likes' : likes, 
-            'dislikes' : dislikes,
-            'unknonws' : unknowns,
-            'like_to_dislike_ratios' : like_to_dislike_ratios
+            'likes': likes,
+            'dislikes': dislikes,
+            'unknowns': unknowns,
+            'like_to_dislike_ratios': like_to_dislike_ratios
         }
     }
 
@@ -136,21 +137,19 @@ def compute_statistics():
     completed_sessions = [session for session in sessions if session['final']]
 
     statistics = {
-        key : {
-            'n_sessions' : len(unique_tokens_all if key == 'all' else unique_tokens_final),
-            'n_likes' : len(get_likes(session_set)),
-            'n_dislikes' : len(get_dislikes(session_set)),
-            'n_unknown' : len(get_unknowns(session_set)),
-
-            'durations' : get_duration_statistics(session_set),
-            'feedback' : get_feedback_statistics(session_set) 
+        key: {
+            'n_sessions': len(unique_tokens_all if key == 'all' else unique_tokens_final),
+            'n_likes': len(get_likes(session_set)),
+            'n_dislikes': len(get_dislikes(session_set)),
+            'n_unknown': len(get_unknowns(session_set)),
+            'durations': get_duration_statistics(session_set),
+            'feedback': get_feedback_statistics(session_set)
         }
 
-        for key, session_set in { 'all' : sessions, 'completed' : completed_sessions }.items()
+        for key, session_set in {'all': sessions, 'completed': completed_sessions}.items()
     }
 
     return statistics
-
 
 
 if __name__ == '__main__': 
