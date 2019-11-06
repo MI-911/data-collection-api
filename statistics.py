@@ -127,7 +127,7 @@ def get_feedback_statistics(sessions):
     }
 
 
-if __name__ == '__main__': 
+def compute_statistics(): 
     unique_tokens_all = get_unique_tokens()
     unique_tokens_not_empty = get_unique_tokens(filter_empty=True)
     unique_tokens_final = get_unique_tokens(filter_final=True)
@@ -149,6 +149,11 @@ if __name__ == '__main__':
         for key, session_set in { 'all' : sessions, 'completed' : completed_sessions }.items()
     }
 
+    return statistics
+
+
+
+if __name__ == '__main__': 
     with open('statistics.json', 'w+') as fp: 
-        json.dump(statistics, fp)
+        json.dump(compute_statistics(), fp)
 

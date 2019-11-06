@@ -3,6 +3,7 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
+from statistics import compute_statistics
 
 from flask import Flask, jsonify, request, send_from_directory, abort
 from flask_cors import CORS
@@ -64,6 +65,11 @@ def _get_movie_from_row(row):
     }
 
     return res
+
+
+@app.route('/api/statistics')
+def statistics(): 
+    return jsonify(compute_statistics())
 
 
 @app.route('/api/movies')
