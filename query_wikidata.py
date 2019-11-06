@@ -9,6 +9,11 @@ genre_query = """SELECT ?genre ?genreLabel ?film WHERE {
                    ?film wdt:P345 "%s".
                  }"""
 
+genre_subclass_query = """SELECT ?subclass WHERE {
+                           SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                           wd:%s wdt:P279 ?subclass.
+                          }"""
+
 subject_query = """SELECT ?subject ?subjectLabel WHERE {
                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                    wd:%s wdt:P921 ?subject.
@@ -52,6 +57,15 @@ def get_genres(imdb_id):
         genres[result['genre']['value']] = result['genreLabel']['value']
 
     return movie_uri, genres
+
+
+def get_subclasses(entity_id):
+    subclasses = set()
+
+    for result in get_results(genre_subclass_query % entity_id):
+        subclasses.add(result['subclass']['value'])
+
+    return subclasses
 
 
 def get_subjects(entity_id):
@@ -100,3 +114,4 @@ if __name__ == "__main__":
     actors, directors = get_people('Q171048')
     print(actors)
     print(directors)
+    print(get_subclasses('Q860626'))

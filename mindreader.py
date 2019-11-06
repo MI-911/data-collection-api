@@ -27,6 +27,7 @@ LIKED = 'liked'
 DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
 TIMESTAMPS = 'timestamps'
+FINAL = 'final'
 
 SESSION_PATH = 'sessions'
 
@@ -53,11 +54,12 @@ def _get_movie_from_row(row):
     res = {
         'name': f'{row["title"]} ({row["year"]})',
         'image': f'https://www.mindreader.tech/static/movie/{row["imdbId"]}',
-        'uri': f'{row["uri"]}',
+        'uri': row["uri"],
         'resource': "movie",
         'description': "Movie",
         'movies': []
     }
+
     return res
 
 
@@ -87,10 +89,10 @@ def is_done():
 
 
 @app.route('/api/final', methods=['POST'])
-def update_session_wrapper():
+def final_feedback():
     json_data = request.json
-    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
-    return jsonify('Mah Man! You know inspect mode!')
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), final=True)
+    return jsonify('Mah man! You know inspect mode!')
 
 
 @app.route('/api/feedback', methods=['POST'])
@@ -189,7 +191,7 @@ def get_session_path(header):
     return os.path.join(SESSION_PATH, f'{header}.json')
 
 
-def update_session(liked, disliked, unknown):
+def update_session(liked, disliked, unknown, final=False):
     header = get_authorization()
     user_session_path = get_session_path(header)
 
@@ -202,7 +204,8 @@ def update_session(liked, disliked, unknown):
                 LIKED: [],
                 DISLIKED: [],
                 UNKNOWN: [],
-                TIMESTAMPS: []
+                TIMESTAMPS: [],
+                FINAL: False
             }
 
         if len(header) > UUID_LENGTH:
@@ -212,6 +215,7 @@ def update_session(liked, disliked, unknown):
     SESSION[header][LIKED] += list(liked)
     SESSION[header][DISLIKED] += list(disliked)
     SESSION[header][UNKNOWN] += list(unknown)
+    SESSION[header][FINAL] = final
 
     print(f'Updating with:')
     print(f'    Likes:    {liked}')
@@ -262,7 +266,9 @@ def get_disliked_entities():
 
 
 def is_invalid_request():
-    return get_authorization() is None
+    authorization = get_authorization()
+
+    return not authorization or '+' not in authorization
 
 
 def get_authorization():
@@ -275,9 +281,8 @@ def get_cross_session_seen_entities():
     if header not in SESSION:
         return []
 
-    return get_cross_session_entities_generic(header, LIKED) + \
-           get_cross_session_entities_generic(header, DISLIKED) + \
-           get_cross_session_entities_generic(header, UNKNOWN)
+    return get_cross_session_entities_generic(header, LIKED) + get_cross_session_entities_generic(header, DISLIKED) + \
+        get_cross_session_entities_generic(header, UNKNOWN)
 
 
 def get_cross_session_entities_generic(header, type):
@@ -286,7 +291,7 @@ def get_cross_session_entities_generic(header, type):
     for key, value in SESSION.items():
         if key.startswith(head):
             results.extend(value[type])
-            
+
     return results
 
 

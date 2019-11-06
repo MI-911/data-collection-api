@@ -9,7 +9,7 @@ import csv
 from tqdm import tqdm
 
 from dataset import movies
-from query_wikidata import get_genres, get_people, get_subjects, get_companies
+from query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses
 
 base_path = 'wikidata'
 csv_path = os.path.join(base_path, 'csv')
@@ -228,6 +228,21 @@ def write_companies():
                 writer.writerow({'uri:ID': key, 'name': value.title(), ':LABEL': 'Company'})
 
 
+def dump_genre_hierarchy():
+    uris = set(json.load(open(genres_path, 'r')).keys()).union(set(json.load(open(subjects_path, 'r')).keys()))
+
+    with open(os.path.join(csv_path, 'subclasses.csv'), 'w') as subclasses_fp:
+        subclass_writer = csv.DictWriter(subclasses_fp, [':START_ID', ':END_ID', ':TYPE'])
+        subclass_writer.writeheader()
+
+        for uri in tqdm(uris):
+            short_id = uri.split('/')[-1]
+
+            for subclass in get_subclasses(short_id):
+                if subclass in uris:
+                    subclass_writer.writerow({':START_ID': uri, ':END_ID': subclass, ':TYPE': 'SUBCLASS_OF'})
+
+
 def write_categories():
     genres = json.load(open(genres_path, 'r'))
     subjects = json.load(open(subjects_path, 'r'))
@@ -366,6 +381,9 @@ def write_mapping():
 
 
 if __name__ == "__main__":
+    dump_genre_hierarchy()
+    exit(0)
+
     write_companies()
     write_movie_companies()
     write_categories()
