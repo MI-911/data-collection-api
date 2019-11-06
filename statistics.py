@@ -124,7 +124,7 @@ def get_feedback_statistics(sessions):
             'dislikes': dislikes,
             'unknowns': unknowns,
             'like_to_dislike_ratios': like_to_dislike_ratios
-        }
+        }.items()
     }
 
 
