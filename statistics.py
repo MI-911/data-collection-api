@@ -4,71 +4,8 @@ from scipy import median, mean, sum, min, max, std
 from os.path import join 
 
 
-# {
-#  "liked": [
-#   "http://www.wikidata.org/entity/Q212689",
-#   "http://www.wikidata.org/entity/Q107226",
-#   "http://www.wikidata.org/entity/Q133654",
-#   "http://www.wikidata.org/entity/Q906343",
-#   "http://www.wikidata.org/entity/Q645928",
-#   "http://www.wikidata.org/entity/Q157443",
-#   "http://www.wikidata.org/entity/Q44512",
-#   "http://www.wikidata.org/entity/Q205707",
-#   "http://www.wikidata.org/entity/Q1054574",
-#   "http://www.wikidata.org/entity/Q860626",
-#   "http://www.wikidata.org/entity/Q15270647",
-#   "http://www.wikidata.org/entity/Q190050"
-#  ],
-#  "disliked": [
-#   "http://www.wikidata.org/entity/Q116845",
-#   "http://www.wikidata.org/entity/Q17042878",
-#   "http://www.wikidata.org/entity/Q220751",
-#   "Decade-1960",
-#   "http://www.wikidata.org/entity/Q106182",
-#   "http://www.wikidata.org/entity/Q219776",
-#   "http://www.wikidata.org/entity/Q4985891"
-#  ],
-#  "unknown": [
-#   "http://www.wikidata.org/entity/Q266209",
-#   "http://www.wikidata.org/entity/Q3598715",
-#   "http://www.wikidata.org/entity/Q1124875",
-#   "http://www.wikidata.org/entity/Q431793",
-#   "http://www.wikidata.org/entity/Q25139",
-#   "http://www.wikidata.org/entity/Q34975",
-#   "http://www.wikidata.org/entity/Q318292",
-#   "http://www.wikidata.org/entity/Q497155",
-#   "http://www.wikidata.org/entity/Q14949752",
-#   "http://www.wikidata.org/entity/Q1632158",
-#   "http://www.wikidata.org/entity/Q570004",
-#   "http://www.wikidata.org/entity/Q27513",
-#   "http://www.wikidata.org/entity/Q18407",
-#   "http://www.wikidata.org/entity/Q742195",
-#   "http://www.wikidata.org/entity/Q165525",
-#   "http://www.wikidata.org/entity/Q666017",
-#   "http://www.wikidata.org/entity/Q201819",
-#   "http://www.wikidata.org/entity/Q617249",
-#   "http://www.wikidata.org/entity/Q497850"
-#  ],
-#  "timestamps": [
-#   1573038609.7744405,
-#   1573038620.8507001,
-#   1573038634.895753,
-#   1573038655.0620732,
-#   1573038662.5234277,
-#   1573038664.753096,
-#   1573038665.946394,
-#   1573038666.7932694,
-#   1573038668.4168873,
-#   1573038669.0624812,
-#   1573038669.5386686,
-#   1573038669.8322973,
-#   1573038670.6365888,
-#   1573038670.7771683
-#  ],
-#  "final": true
-# }
-
 SESSIONS_PATH = 'sessions'
+
 
 def is_empty(session): 
     return not (session['liked'] or session['disliked'] or session['unknown'])
