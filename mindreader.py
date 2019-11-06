@@ -3,6 +3,8 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
+
+from encoder import NpEncoder
 from statistics import compute_statistics
 
 from flask import Flask, jsonify, request, send_from_directory, abort
@@ -14,6 +16,7 @@ from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_u
 
 app = Flask(__name__)
 app.secret_key = "XD"
+app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MIN_QUESTIONS = 15

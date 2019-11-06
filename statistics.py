@@ -109,7 +109,7 @@ def get_feedback_statistics(sessions):
         dislikes.append(_dislikes)
         unknowns.append(_unknowns)
 
-        if dislikes:
+        if _dislikes:
             like_to_dislike_ratios.append(_likes / _dislikes)
 
     return {
@@ -129,7 +129,6 @@ def get_feedback_statistics(sessions):
 
 
 def compute_statistics(): 
-    unique_tokens_all = get_unique_tokens()
     unique_tokens_not_empty = get_unique_tokens(filter_empty=True)
     unique_tokens_final = get_unique_tokens(filter_final=True)
     
@@ -138,7 +137,7 @@ def compute_statistics():
 
     statistics = {
         key: {
-            'n_sessions': len(unique_tokens_all if key == 'all' else unique_tokens_final),
+            'n_users': len(unique_tokens_not_empty if key == 'all' else unique_tokens_final),
             'n_likes': len(get_likes(session_set)),
             'n_dislikes': len(get_dislikes(session_set)),
             'n_unknown': len(get_unknowns(session_set)),
