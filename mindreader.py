@@ -21,6 +21,9 @@ SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
 
+LAST_N_QUESTIONS = 5
+LAST_N_RATED_QUESTIONS = 2
+
 UUID_LENGTH = 36
 
 LIKED = 'liked'
@@ -46,7 +49,7 @@ def get_profile(actor):
 
 
 def _get_samples():
-    samples = dataset.sample(6, get_cross_session_seen_entities())
+    samples = dataset.sample(LAST_N_QUESTIONS*2, get_cross_session_seen_entities())
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
@@ -125,6 +128,12 @@ def feedback():
         print(f'd: {disliked_res}')
 
         samples = _get_samples()
+
+        liked_res = liked_res[:LAST_N_RATED_QUESTIONS]
+        liked_res = liked_res + samples[:LAST_N_QUESTIONS-len(liked_res)]
+
+        disliked_res = disliked_res[:LAST_N_RATED_QUESTIONS]
+        disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS-len(disliked_res)):]
 
         return jsonify({
             'prediction': True,
