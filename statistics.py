@@ -86,21 +86,17 @@ def get_duration_statistics(sessions):
     _mean = mean(durations)
     _median = median(durations)
     _std = std(durations)
-    _q75 = percentile(durations, 75)
-    _q90 = percentile(durations, 90)
-    _q95 = percentile(durations, 95),
-    _q99 = percentile(durations, 99)
+    _q1 = percentile(durations, 25)
+    _q3 = percentile(durations, 75)
 
     return {
-        'min' : _min, 
-        'max' : _max, 
-        'avg' : _mean,
-        'median' : _median, 
-        'std' : _std,
-        'q75' : _q75,
-        'q90' : _q90,
-        'q95' : _q95, 
-        'q99' : _q99
+        'min': _min,
+        'max': _max,
+        'avg': _mean,
+        'median': _median,
+        'std': _std,
+        'q1': _q1,
+        'q3': _q3,
     }
 
 
