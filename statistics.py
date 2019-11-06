@@ -1,5 +1,6 @@
 import json
 import os
+from collections import Counter
 from os.path import join
 
 from scipy import median, mean, amin, amax, std, percentile
@@ -140,7 +141,22 @@ def get_feedback_statistics(sessions):
     }
 
 
-def compute_statistics(): 
+def get_top_entities(session_set):
+    categories = {'liked', 'disliked', 'unknown'}
+    category_items = {key: [] for key in categories}
+
+    for session in session_set:
+        for category in categories:
+            category_items[category] += session[category]
+
+    return {
+        category: [uri for uri, _ in Counter(items).most_common(5)]
+
+        for category, items in category_items.items()
+    }
+
+
+def compute_statistics():
     unique_tokens_not_empty = get_unique_tokens(filter_empty=True)
     unique_tokens_final = get_unique_tokens(filter_final=True)
     
@@ -154,7 +170,8 @@ def compute_statistics():
             'n_dislikes': len(get_dislikes(session_set)),
             'n_unknown': len(get_unknowns(session_set)),
             'durations': get_duration_statistics(session_set),
-            'feedback': get_feedback_statistics(session_set)
+            'feedback': get_feedback_statistics(session_set),
+            'top': get_top_entities(session_set)
         }
 
         for key, session_set in {'all': sessions, 'completed': completed_sessions}.items()
