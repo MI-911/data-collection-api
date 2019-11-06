@@ -2,7 +2,7 @@ import json
 import os
 from os.path import join
 
-from scipy import median, mean, amin, amax, std
+from scipy import median, mean, amin, amax, std, percentile
 
 SESSIONS_PATH = 'sessions'
 
@@ -85,13 +85,21 @@ def get_duration_statistics(sessions):
     _mean = mean(durations)
     _median = median(durations)
     _std = std(durations)
+    _q75 = percentile(durations, 75)
+    _q90 = percentile(durations, 90)
+    _q95 = percentile(durations, 95),
+    _q99 = percentile(durations, 99)
 
     return {
         'min' : _min, 
         'max' : _max, 
         'avg' : _mean,
         'median' : _median, 
-        'std' : _std
+        'std' : _std,
+        'q75' : _q75,
+        'q90' : _q90,
+        'q95' : _q95, 
+        'q99' : _q99
     }
 
 
@@ -118,7 +126,11 @@ def get_feedback_statistics(sessions):
             'max': amax(lst),
             'avg': mean(lst),
             'median': median(lst),
-            'std': std(lst)
+            'std': std(lst),
+            'q75' : percentile(lst, 75),
+            'q90' : percentile(lst, 90),
+            'q95' : percentile(lst, 95),
+            'q99' : percentile(lst, 99),
         } for key, lst in {
             'likes': likes,
             'dislikes': dislikes,
