@@ -353,23 +353,19 @@ def write_people():
 
 
 def write_triples():
-    files = ['movie_genres.json', 'movie_directors.json', 'movie_subjects.json', 'movie_actors.json']
+    files = ['movie_genre.csv', 'movie_director.csv', 'movie_subject.csv', 'movie_actor.csv',
+             'movie_decade.csv', 'movie_company.csv']
 
     with open('wikidata.csv', mode='w') as csv_file:
-        fieldnames = ['head', 'relation', 'tail']
-        writer = csv.DictWriter(csv_file, fieldnames=fieldnames)
+        writer = csv.DictWriter(csv_file, fieldnames=['head', 'relation', 'tail'])
         writer.writeheader()
 
         for file in files:
             rows = []
 
-            with open(file, 'r') as fp:
-                data = json.load(fp)['relationships']
-
-                for relation in data:
-                    for tail in relation['tails']:
-                        rows.append({'head': relation['head'], 'relation': relation['relation'], 'tail': tail})
-
+            reader = csv.DictReader(open(os.path.join(csv_path, file)))
+            for row in reader:
+                rows.append({'head': row[':START_ID'], 'relation': row[':TYPE'], 'tail': row[':END_ID']})
             writer.writerows(rows)
 
 
@@ -387,8 +383,9 @@ def titlecase(s):
 
 
 if __name__ == "__main__":
-    write_movies()
+    write_triples()
     exit(0)
+    write_movies()
     write_companies()
     write_movie_companies()
     write_categories()
