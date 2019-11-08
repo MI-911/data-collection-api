@@ -2,10 +2,22 @@ import json
 import os
 from collections import Counter
 from os.path import join
-
+from sampling import _movie_from_uri
 from scipy import median, mean, amin, amax, std, percentile
+import numpy as np
 
 SESSIONS_PATH = 'sessions'
+
+class NpEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, np.integer):
+            return int(obj)
+        elif isinstance(obj, np.floating):
+            return float(obj)
+        elif isinstance(obj, np.ndarray):
+            return obj.tolist()
+        else:
+            return super(NpEncoder, self).default(obj)
 
 
 def is_empty(session): 
@@ -50,9 +62,9 @@ def get_unique_tokens(filter_final=False, filter_empty=False):
                 
                 tokens.append(session_id)
         
-        return set([token.split('+')[0] for token in tokens])
+        return set([token.replace('.json', '').split('+')[0] for token in tokens])
 
-    return set([token.split('+')[0] for token in os.listdir(SESSIONS_PATH)])
+    return set([token.replace('.json', '').split('+')[0] for token in os.listdir(SESSIONS_PATH)])
 
 
 def get_likes(sessions): 
@@ -161,6 +173,44 @@ def get_unique_entities(session_set):
     return len(set(items))
 
 
+def get_feedback_distribution(session_set, only_movies=False, only_non_movies=False): 
+    def filter(uris, only_movies=False, only_non_movies=False):
+        if only_movies: 
+            return [uri for uri in uris if _movie_from_uri(uri)]
+        elif only_non_movies:
+            return [uri for uri in uris if not _movie_from_uri(uri)]
+        else: 
+            return uris
+
+    n_total, n_liked, n_disliked, n_unknown = 0, 0, 0, 0
+
+
+    for session in session_set: 
+        uris = filter(session['liked'], only_movies=only_movies, only_non_movies=only_non_movies)
+        for uri in uris: 
+            n_liked += 1
+
+        uris = filter(session['disliked'], only_movies=only_movies, only_non_movies=only_non_movies)
+        for uri in uris: 
+            n_disliked += 1
+
+        uris = filter(session['unknown'], only_movies=only_movies, only_non_movies=only_non_movies)
+        for uri in uris: 
+            n_unknown += 1
+
+    n_total = n_liked + n_disliked + n_unknown
+    
+    return {
+        'n_total' : n_total, 
+        'n_liked' : n_liked, 
+        'n_disliked' : n_disliked,
+        'n_unknown' : n_unknown,
+        'p_liked' : n_liked / n_total,
+        'p_disliked' : n_disliked / n_total,
+        'p_unknown' : n_unknown / n_total
+    }
+
+
 def compute_statistics():
     unique_tokens_not_empty = get_unique_tokens(filter_empty=True)
     unique_tokens_final = get_unique_tokens(filter_final=True)
@@ -170,10 +220,13 @@ def compute_statistics():
 
     statistics = {
         key: {
+            'n_sessions' : len(session_set),
             'n_users': len(unique_tokens_not_empty if key == 'all' else unique_tokens_final),
-            'n_likes': len(get_likes(session_set)),
-            'n_dislikes': len(get_dislikes(session_set)),
-            'n_unknown': len(get_unknowns(session_set)),
+            'distributions' : {
+                'movies' : get_feedback_distribution(session_set, only_movies=True),
+                'non_movies' : get_feedback_distribution(session_set, only_non_movies=True),
+                'entities' : get_feedback_distribution(session_set)
+            },
             'durations': get_duration_statistics(session_set),
             'feedback': get_feedback_statistics(session_set),
             'top': get_top_entities(session_set),
@@ -188,5 +241,5 @@ def compute_statistics():
 
 if __name__ == '__main__': 
     with open('statistics.json', 'w+') as fp: 
-        json.dump(compute_statistics(), fp)
+        json.dump(compute_statistics(), fp, cls=NpEncoder, indent=True)
 
