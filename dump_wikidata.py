@@ -369,6 +369,25 @@ def write_triples():
             writer.writerows(rows)
 
 
+def write_uri_names():
+    files = ['movies.csv', 'decades.csv', 'companies.csv', 'categories.csv', 'people.csv']
+
+    with open('uri_name.csv', mode='w') as csv_file:
+        writer = csv.DictWriter(csv_file, fieldnames=['uri', 'name'])
+        writer.writeheader()
+
+        for file in files:
+            rows = []
+
+            reader = csv.DictReader(open(os.path.join(csv_path, file)))
+            for row in reader:
+                uri = row['uri:ID']
+                if uri not in seen_uris:
+                    rows.append({'uri': row['uri:ID'], 'name': row['name']})
+                    seen_uris.add(uri)
+            writer.writerows(rows)
+
+
 def write_mapping():
     with open('mapping.csv', mode='w') as csv_file:
         writer = csv.DictWriter(csv_file, fieldnames=['imdbId', 'uri'])
@@ -384,6 +403,7 @@ def titlecase(s):
 
 if __name__ == "__main__":
     write_triples()
+    write_uri_names()
     exit(0)
     write_movies()
     write_companies()

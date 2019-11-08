@@ -134,6 +134,7 @@ movies.imdbId = movies.imdbId.map(transform_imdb_id)
 
 # Merge with mappings
 movies = movies.merge(mapping, on='imdbId')
+movie_uris_set = set(movies.uri)
 
 # Apply movieId as index
 for df in [movies, ratings, links]:

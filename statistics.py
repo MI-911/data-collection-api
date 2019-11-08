@@ -1,12 +1,23 @@
+import csv
 import json
 import os
 from collections import Counter
-from os.path import join
-from sampling import _movie_from_uri
+from os.path import join, exists
 from scipy import median, mean, amin, amax, std, percentile
 import numpy as np
 
+from dataset import movie_uris_set
+
 SESSIONS_PATH = 'sessions'
+
+uri_name = dict()
+if exists('uri_name.csv'):
+    with open('uri_name.csv', 'r') as fp:
+        reader = csv.DictReader(fp)
+
+        for row in reader:
+            uri_name[row['uri']] = row['name']
+
 
 class NpEncoder(json.JSONEncoder):
     def default(self, obj):
@@ -156,7 +167,8 @@ def get_top_entities(session_set):
             category_items[category] += session[category]
 
     return {
-        category: [{'uri': uri, 'count': count} for uri, count in Counter(items).most_common(10)]
+        category: [{'uri': uri, 'count': count,
+                    'name': uri_name.get(uri, 'N/A')} for uri, count in Counter(items).most_common(10)]
 
         for category, items in category_items.items()
     }
@@ -176,14 +188,13 @@ def get_unique_entities(session_set):
 def get_feedback_distribution(session_set, only_movies=False, only_non_movies=False): 
     def filter(uris, only_movies=False, only_non_movies=False):
         if only_movies: 
-            return [uri for uri in uris if _movie_from_uri(uri)]
+            return [uri for uri in uris if uri in movie_uris_set]
         elif only_non_movies:
-            return [uri for uri in uris if not _movie_from_uri(uri)]
-        else: 
-            return uris
+            return [uri for uri in uris if uri not in movie_uris_set]
+
+        return uris
 
     n_total, n_liked, n_disliked, n_unknown = 0, 0, 0, 0
-
 
     for session in session_set: 
         uris = filter(session['liked'], only_movies=only_movies, only_non_movies=only_non_movies)
@@ -201,13 +212,13 @@ def get_feedback_distribution(session_set, only_movies=False, only_non_movies=Fa
     n_total = n_liked + n_disliked + n_unknown
     
     return {
-        'n_total' : n_total, 
-        'n_liked' : n_liked, 
-        'n_disliked' : n_disliked,
-        'n_unknown' : n_unknown,
-        'p_liked' : n_liked / n_total,
-        'p_disliked' : n_disliked / n_total,
-        'p_unknown' : n_unknown / n_total
+        'n_total': n_total,
+        'n_liked': n_liked,
+        'n_disliked': n_disliked,
+        'n_unknown': n_unknown,
+        'p_liked': n_liked / n_total,
+        'p_disliked': n_disliked / n_total,
+        'p_unknown': n_unknown / n_total
     }
 
 
@@ -222,10 +233,10 @@ def compute_statistics():
         key: {
             'n_sessions' : len(session_set),
             'n_users': len(unique_tokens_not_empty if key == 'all' else unique_tokens_final),
-            'distributions' : {
-                'movies' : get_feedback_distribution(session_set, only_movies=True),
-                'non_movies' : get_feedback_distribution(session_set, only_non_movies=True),
-                'entities' : get_feedback_distribution(session_set)
+            'distributions': {
+                'movies': get_feedback_distribution(session_set, only_movies=True),
+                'non_movies': get_feedback_distribution(session_set, only_non_movies=True),
+                'entities': get_feedback_distribution(session_set)
             },
             'durations': get_duration_statistics(session_set),
             'feedback': get_feedback_statistics(session_set),
