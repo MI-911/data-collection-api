@@ -62,9 +62,9 @@ def get_unique_tokens(filter_final=False, filter_empty=False):
                 
                 tokens.append(session_id)
         
-        return set([token.split('+')[0] for token in tokens])
+        return set([token.replace('.json', '').split('+')[0] for token in tokens])
 
-    return set([token.split('+')[0] for token in os.listdir(SESSIONS_PATH)])
+    return set([token.replace('.json', '').split('+')[0] for token in os.listdir(SESSIONS_PATH)])
 
 
 def get_likes(sessions): 
