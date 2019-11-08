@@ -83,8 +83,14 @@ def record_to_entity(record):
 
 
 def _movie_from_uri(uri):
-    row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
-    return {
-        attr: val
-        for attr, val in zip(movies.columns, next(row, []))
-    }
+    try: 
+        row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
+        if not row: 
+            return None 
+            
+        return {
+            attr: val
+            for attr, val in zip(movies.columns, next(row, []))
+        }
+    except Exception: 
+        return None 
