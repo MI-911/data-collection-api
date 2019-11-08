@@ -170,6 +170,7 @@ def compute_statistics():
 
     statistics = {
         key: {
+            'n_sessions' : len(session_set),
             'n_users': len(unique_tokens_not_empty if key == 'all' else unique_tokens_final),
             'n_likes': len(get_likes(session_set)),
             'n_dislikes': len(get_dislikes(session_set)),
