@@ -75,8 +75,8 @@ def record_to_entity(record):
     movie = _movie_from_uri(record['uri']) if record['movie'] else None
 
     return {
-        "name": f'{movie["summary"]} ({movie["summary"]})' if movie else record['name'],
-        "resource": get_resource(record),
+        "name": f'{movie["title"]} ({movie["year"]})' if movie else record['name'],
+        # "resource": get_resource(record),
         "uri": record['uri'],
         "image": get_image(record),
         "description": get_description(record),
