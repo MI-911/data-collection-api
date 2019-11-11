@@ -5,7 +5,7 @@ _uri = environ.get('BOLT_URI', 'bolt://localhost:7778')
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
-def _generic_get(tx, query, args):
+def _generic_get(tx, query, args=None):
     if args:
         return tx.run(query, **args)
     else:
@@ -22,6 +22,16 @@ def get_number_entities():
         res = res.single()
 
     return res['count']
+
+
+def get_triples():
+    query = """
+            MATCH (h)-[r]-(t) RETURN h.uri AS head_uri, TYPE(r) AS relation, t.uri AS tail_uri
+        """
+    with driver.session() as session:
+        res = session.read_transaction(_generic_get, query)
+
+    return [record for record in res]
 
 
 def get_last_batch(source_uris, seen):

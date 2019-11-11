@@ -4,6 +4,8 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
 
+from pandas import DataFrame
+
 from encoder import NpEncoder
 from statistics import compute_statistics
 
@@ -11,7 +13,7 @@ from flask import Flask, jsonify, request, send_from_directory, abort, make_resp
 from flask_cors import CORS
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
+from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch, get_triples
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 from utilities import get_ratings_dataframe
 
@@ -106,7 +108,21 @@ def get_ratings():
     df = get_ratings_dataframe()
 
     output = make_response(df.to_csv())
-    output.headers["Content-Disposition"] = "attachment; filename=export.csv"
+    output.headers["Content-Disposition"] = "attachment; filename=ratings.csv"
+    output.headers["Content-Type"] = "text/csv"
+    return output
+
+
+@app.route('/api/triples', methods=['GET'])
+def get_all_triples():
+    triples = get_triples()
+
+    df = DataFrame.from_records(triples)
+    if triples:
+        df.columns = triples[0].keys()
+
+    output = make_response(df.to_csv())
+    output.headers["Content-Disposition"] = "attachment; filename=triples.csv"
     output.headers["Content-Type"] = "text/csv"
     return output
 
