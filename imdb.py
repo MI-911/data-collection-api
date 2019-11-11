@@ -12,7 +12,7 @@ def get_actor_soup(actor_id):
 
 
 def get_movie_soup(movie_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/title/{movie_id}').text, features='lxml')
+    return BeautifulSoup(requests.get(f'https://m.imdb.com/title/{movie_id}/plotsummary').text, features='lxml')
 
 
 def get_actors(soup):

@@ -72,12 +72,15 @@ def get_image(record):
 
 
 def record_to_entity(record):
+    movie = _movie_from_uri(record['uri']) if record['movie'] else None
+
     return {
-        "name": f'{record["name"]} ({record["year"]})' if record['movie'] else record['name'],
+        "name": f'{movie["summary"]} ({movie["summary"]})' if movie else record['name'],
         "resource": get_resource(record),
         "uri": record['uri'],
         "image": get_image(record),
         "description": get_description(record),
+        "summary": movie["summary"] if movie else None,
         "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
 

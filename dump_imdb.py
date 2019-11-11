@@ -15,6 +15,7 @@ actors_directory = 'movie_actors'
 actor_images_directory = 'actor_images'
 existing_actors_file = 'existing_actors.json'
 existing_actors = []
+plots = dict()
 
 if not os.path.exists(image_directory):
     os.makedirs(image_directory)
@@ -74,11 +75,16 @@ def save_url_to_file(url, file):
 def handle_movie(imdb_id):
     try:
         soup = get_movie_soup(imdb_id)
+        plot = soup.find('a', attrs={'class': 'ipl-hideable-trigger'})
+        if not plot:
+            return
+
+        plots[imdb_id] = plot.text.split('\n')[0].strip()
 
         # Save poster
-        image_url = get_image_path(soup)
-        if image_url:
-            save_url_to_file(get_movie_poster(soup), get_image_path(imdb_id))
+        # image_url = get_image_path(soup)
+        # if image_url:
+        #    save_url_to_file(get_movie_poster(soup), get_image_path(imdb_id))
     except Exception as e:
         print(f'{imdb_id} failed: {e}')
 
@@ -113,7 +119,7 @@ def handle_actor_chunk(chunk):
 
 
 def _handle_chunks(fn, chunks):
-    executor = ThreadPoolExecutor(max_workers=100)
+    executor = ThreadPoolExecutor(max_workers=200)
     futures = []
     for chunk in chunks:
         futures.append(executor.submit(fn, chunk))
@@ -123,16 +129,11 @@ def _handle_chunks(fn, chunks):
 
 
 def dump_movies():
-    existing = set()
-    for r, d, f in os.walk(image_directory):
-        for file in f:
-            movie_id = file.split('.')[0]
-            if movie_id not in existing:
-                existing.add(movie_id)
-
-    missing = set(movies.imdbId).difference(existing)
+    missing = set(movies.imdbId)
 
     _handle_chunks(handle_movie, missing)
+    with open('summaries.json', 'w') as fp:
+        json.dump(plots, fp)
 
 
 def write_existing_actors():
@@ -167,6 +168,6 @@ def dump_actors():
 if __name__ == "__main__":
     # existing_actors = read_existing_actors()
     # dump_actors()
-    # dump_movies()
-    dump_actors()
-    #handle_actor('nm0293589')
+    dump_movies()
+    # dump_actors()
+    # handle_actor('nm0293589')
