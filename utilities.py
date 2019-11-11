@@ -1,8 +1,10 @@
 import json
 import os
+from collections import Counter
 from os.path import join
 
 from pandas import DataFrame
+from tqdm import tqdm
 
 from dataset import movie_uris_set, DATA_PATH
 
@@ -40,12 +42,13 @@ def get_user_entity_pairs():
 
 def get_ratings(filter_final=False, filter_empty=False):
     uuid_sessions = {}
-    categories = {'liked', 'disliked', 'unknown'}
-    for session_id in os.listdir(SESSIONS_PATH):
+    categories = ['liked', 'disliked', 'unknown']
+    print("Combining user sessions")
+    for session_id in tqdm(os.listdir(SESSIONS_PATH)):
         uuid = session_id.split('+')[0]
 
         if uuid not in uuid_sessions:
-            uuid_sessions[uuid] = {'liked': [], 'disliked': [], 'unknown': []}
+            uuid_sessions[uuid] = {'liked': set(), 'disliked': set(), 'unknown': set()}
 
         with open(join(SESSIONS_PATH, session_id)) as fp:
             sess = json.load(fp)
@@ -56,7 +59,23 @@ def get_ratings(filter_final=False, filter_empty=False):
             if filter_empty and is_empty(sess):
                 continue
 
-            [uuid_sessions[uuid][key].extend(item) for key, item in sess.items() if key in categories and item]
+            [uuid_sessions[uuid][key].update(set(item)) for key, item in sess.items() if key in categories and item]
+
+    # Rating not shared among categories
+    print("Removing duplicates")
+    for uuid, type_items in tqdm(uuid_sessions.items()):
+
+        # Flatten items
+        collected = [item for items in type_items.values() for item in items]
+
+        # Get count
+        collected = Counter(collected)
+
+        # Remove from all categories if count is above 1 (aka. shared among categories)
+        for item, count in collected.items():
+            if count > 1:
+                for rating in uuid_sessions[uuid].keys():
+                    uuid_sessions[uuid][rating].remove(item)
 
     return uuid_sessions
 
