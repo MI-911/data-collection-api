@@ -5,6 +5,22 @@ _uri = environ.get('BOLT_URI', 'bolt://localhost:7778')
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
+def _get_number_entities(tx):
+    query = """
+        MATCH (n) RETURN COUNT(n) as count
+    """
+
+    return tx.run(query)
+
+
+def get_number_entities():
+    with driver.session() as session:
+        res = session.read_transaction(_get_number_entities)
+        res = res.single()
+
+    return res['count']
+
+
 def _get_last_batch(tx, source_uris, seen):
     query = """
         MATCH (m:Movie)-->(r) WHERE m.uri IN $uris AND NOT r IN $seen

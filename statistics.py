@@ -7,6 +7,7 @@ from scipy import median, mean, amin, amax, std, percentile
 import numpy as np
 
 from dataset import movie_uris_set
+from neo import get_number_entities
 
 SESSIONS_PATH = 'sessions'
 
@@ -176,13 +177,27 @@ def get_top_entities(session_set):
 
 def get_unique_entities(session_set):
     categories = {'liked', 'disliked', 'unknown'}
-    items = []
+    items = get_entities_set_from_categories(session_set, categories)
 
+    return len(items)
+
+
+def get_entity_rated_rate(session_set):
+    categories = {'liked', 'disliked'}
+    items = get_entities_set_from_categories(session_set, categories)
+
+    num = get_number_entities()
+
+    return len(items) / (num * 1.0)
+
+
+def get_entities_set_from_categories(session_set, categories):
+    items = list()
     for session in session_set:
         for category in categories:
             items += session[category]
 
-    return len(set(items))
+    return set(items)
 
 
 def get_feedback_distribution(session_set, only_movies=False, only_non_movies=False): 
@@ -231,7 +246,7 @@ def compute_statistics():
 
     statistics = {
         key: {
-            'n_sessions' : len(session_set),
+            'n_sessions': len(session_set),
             'n_users': len(unique_tokens_not_empty if key == 'all' else unique_tokens_final),
             'distributions': {
                 'movies': get_feedback_distribution(session_set, only_movies=True),
@@ -241,9 +256,9 @@ def compute_statistics():
             'durations': get_duration_statistics(session_set),
             'feedback': get_feedback_statistics(session_set),
             'top': get_top_entities(session_set),
-            'n_entities': get_unique_entities(session_set)
+            'n_entities': get_unique_entities(session_set),
+            'rated_rate': get_entity_rated_rate(session_set)
         }
-
         for key, session_set in {'all': sessions, 'completed': completed_sessions}.items()
     }
 
