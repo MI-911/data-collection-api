@@ -86,12 +86,11 @@ def get_num_ratings(movie_id):
 def get_year(movie_id): 
     return int(movies[movies['movieId'] == movie_id]['year'].values[-1])
 
-
-data_path = 'data'
-ml_path = os.path.join(data_path, 'movielens')
+DATA_PATH = 'data'
+ml_path = os.path.join(DATA_PATH, 'movielens')
 
 # Load from JSON
-actors = json.load(open(f'{data_path}/actors.json', 'r'))
+actors = json.load(open(f'{DATA_PATH}/actors.json', 'r'))
 
 # Load from CSV
 movies = pd.read_csv(f'{ml_path}/movies.csv')

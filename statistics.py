@@ -8,8 +8,7 @@ import numpy as np
 
 from dataset import movie_uris_set
 from neo import get_number_entities
-
-SESSIONS_PATH = 'sessions'
+from utilities import get_unique_uuids, SESSIONS_PATH, is_empty, get_sessions
 
 uri_name = dict()
 if exists('uri_name.csv'):
@@ -32,24 +31,6 @@ class NpEncoder(json.JSONEncoder):
             return super(NpEncoder, self).default(obj)
 
 
-def is_empty(session): 
-    return not (session['liked'] or session['disliked'] or session['unknown'])
-
-
-def get_sessions(filter_empty=True): 
-    sessions = [] 
-    for session in os.listdir(SESSIONS_PATH): 
-        with open(join(SESSIONS_PATH, session)) as fp:
-            sess = json.load(fp)
-            if filter_empty: 
-                if is_empty(sess): 
-                    continue
-
-            sessions.append(sess)
-
-    return sessions
-
-
 def get_durations(sessions): 
     durations = []
     for session in sessions:
@@ -57,26 +38,6 @@ def get_durations(sessions):
         durations.append(timestamps[-1] - timestamps[0])
 
     return durations
-
-
-def get_unique_tokens(filter_final=False, filter_empty=False): 
-    if filter_final or filter_empty: 
-        tokens = [] 
-        for session_id in os.listdir(SESSIONS_PATH): 
-            with open(join(SESSIONS_PATH, session_id)) as fp:
-                session = json.load(fp)
-                if filter_empty: 
-                    if is_empty(session): 
-                        continue 
-                if filter_final: 
-                    if not session['final']: 
-                        continue
-                
-                tokens.append(session_id)
-        
-        return set([token.replace('.json', '').split('+')[0] for token in tokens])
-
-    return set([token.replace('.json', '').split('+')[0] for token in os.listdir(SESSIONS_PATH)])
 
 
 def get_likes(sessions): 
@@ -238,8 +199,8 @@ def get_feedback_distribution(session_set, only_movies=False, only_non_movies=Fa
 
 
 def compute_statistics():
-    unique_tokens_not_empty = get_unique_tokens(filter_empty=True)
-    unique_tokens_final = get_unique_tokens(filter_final=True)
+    unique_tokens_not_empty = get_unique_uuids(filter_empty=True)
+    unique_tokens_final = get_unique_uuids(filter_final=True)
     
     sessions = get_sessions(filter_empty=True)
     completed_sessions = [session for session in sessions if session['final']]
