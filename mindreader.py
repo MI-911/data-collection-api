@@ -64,7 +64,7 @@ def _get_movie_from_row(row):
         'uri': row["uri"],
         'resource': "movie",
         'description': "Movie",
-        'movies': []
+        'summary': row["summary"]
     }
 
     return res

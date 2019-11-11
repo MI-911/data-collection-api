@@ -98,6 +98,7 @@ movies = pd.read_csv(f'{ml_path}/movies.csv')
 ratings = pd.read_csv(f'{ml_path}/ratings.csv')
 links = pd.read_csv(f'{ml_path}/links.csv')
 mapping = pd.read_csv(f'{ml_path}/mapping.csv')
+summaries = pd.read_csv(f'{ml_path}/summaries.csv')
 
 # Get unique genres
 genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
@@ -136,13 +137,16 @@ movies.imdbId = movies.imdbId.map(transform_imdb_id)
 movies = movies.merge(mapping, on='imdbId')
 movie_uris_set = set(movies.uri)
 
+# Merge with summaries
+movies = movies.merge(summaries, on='imdbId', how='left')
+
 # Apply movieId as index
 for df in [movies, ratings, links]:
     df.sort_values(by='movieId', inplace=True)
     df.reset_index(inplace=True, drop=True)
 
 # Free ratings from memory
-del ratings
+del ratings, summaries, links
 gc.collect()
 
 if __name__ == "__main__":
