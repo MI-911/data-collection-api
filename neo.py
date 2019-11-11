@@ -5,23 +5,26 @@ _uri = environ.get('BOLT_URI', 'bolt://localhost:7778')
 driver = GraphDatabase.driver(_uri, auth=("neo4j", "root123"))
 
 
-def _get_number_entities(tx):
-    query = """
-        MATCH (n) RETURN COUNT(n) as count
-    """
-
-    return tx.run(query)
+def _generic_get(tx, query, args):
+    if args:
+        return tx.run(query, **args)
+    else:
+        return tx.run(query)
 
 
 def get_number_entities():
+    query = """
+            MATCH (n) RETURN COUNT(n) as count
+        """
+
     with driver.session() as session:
-        res = session.read_transaction(_get_number_entities)
+        res = session.read_transaction(_generic_get, query)
         res = res.single()
 
     return res['count']
 
 
-def _get_last_batch(tx, source_uris, seen):
+def get_last_batch(source_uris, seen):
     query = """
         MATCH (m:Movie)-->(r) WHERE m.uri IN $uris AND NOT r IN $seen
             WITH id(r) AS id
@@ -41,27 +44,21 @@ def _get_last_batch(tx, source_uris, seen):
         ORDER BY s DESC, pr DESC
         LIMIT 10
     """
+    args = {'uris': source_uris, 'seen': seen}
 
-    return tx.run(query, uris=source_uris, seen=seen)
-
-
-def get_last_batch(source_uris, seen):
     with driver.session() as session:
-        res = session.read_transaction(_get_last_batch, source_uris, seen)
+        res = session.read_transaction(_generic_get, query, args)
         res = [r['uri'] for r in res]
 
     return res
 
 
-def _get_one_hop_entities(tx, uri): 
-    query = "MATCH (m)-[]-(t)  WHERE m.uri = $uri RETURN t" 
-
-    return tx.run(query, uri=uri)
-
-
 def get_one_hop_entities(uri):
+    query = "MATCH (m)-[]-(t)  WHERE m.uri = $uri RETURN t"
+    args = {'uri': uri}
+
     with driver.session() as session:
-        res = session.read_transaction(_get_one_hop_entities, uri=uri)
+        res = session.read_transaction(_generic_get, query, args)
 
     return [_get_schema_label(n) for n in res.value()]
 
@@ -73,7 +70,7 @@ def _get_schema_label(node):
         return 'N/A'
 
 
-def _get_unseen_entities(tx, source_uris, seen, limit):
+def get_unseen_entities(source_uris, seen, limit):
     query = """ 
             MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
               WITH DISTINCT r
@@ -95,37 +92,16 @@ def _get_unseen_entities(tx, source_uris, seen, limit):
               r:Company AS company, r:Decade AS decade, r.uri AS uri,r.name AS name, r:Genre as genre, r.image AS image,
               r.year AS year, movies
             """
-
-    return tx.run(query, suris=source_uris, seen=seen, lim=limit)
-
-
-def get_unseen_entities(source_uris, seen, limit):
+    args = {'suris': source_uris, 'seen': seen, 'lim': limit}
     with driver.session() as session:
-        res = session.read_transaction(_get_unseen_entities, source_uris, seen, limit)
+        res = session.read_transaction(_generic_get, query, args)
         res = [r for r in res]
 
     return res
 
 
 def get_relevant_neighbors(uri_list, seen_uri_list):
-    with driver.session() as session:
-        res = session.read_transaction(_get_relevant_neighbors, uri_list, seen_uri_list)
-        res = [r for r in res]
-
-    return res
-    
-
-def create_genre(genre, uri):
-    with driver.session() as session:
-        tx = session.begin_transaction()
-        tx.run("CREATE (n:Genre { `http://www.w3.org/2000/01/rdf-schema#label`: $genre, uri: $uri })",
-               genre=genre, uri=uri)
-        tx.commit()
-
-
-def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
-    print('Get relevant')
-    q = """
+    query = """
         MATCH (n)--(m) WHERE n.uri IN $uris WITH id(m) AS nodeId
         MATCH (m) WHERE id(m) = nodeId AND NOT m.uri IN $seen
             WITH DISTINCT id(m) AS id, m.pagerank AS score
@@ -139,4 +115,19 @@ def _get_relevant_neighbors(tx, uri_list, seen_uri_list):
             r.year AS year, movies, score
         """
 
-    return tx.run(q, uris=uri_list, seen=seen_uri_list)
+    args = {'uris': uri_list, 'seen': seen_uri_list}
+
+    with driver.session() as session:
+        res = session.read_transaction(_generic_get, query, args)
+        res = [r for r in res]
+
+    return res
+    
+
+def create_genre(genre, uri):
+    query = "CREATE (n:Genre { `http://www.w3.org/2000/01/rdf-schema#label`: $genre, uri: $uri })"
+    args = {'genre': genre, 'uri': uri}
+    with driver.session() as session:
+        res = session.run(_generic_get, query, args)
+
+    return res
