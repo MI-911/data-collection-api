@@ -7,12 +7,13 @@ from concurrent.futures import ThreadPoolExecutor, wait
 from encoder import NpEncoder
 from statistics import compute_statistics
 
-from flask import Flask, jsonify, request, send_from_directory, abort
+from flask import Flask, jsonify, request, send_from_directory, abort, make_response
 from flask_cors import CORS
 
 import dataset
 from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
+from utilities import get_ratings_dataframe
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -98,6 +99,16 @@ def _has_both_sentiments():
 
 def is_done():
     return len(get_rated_entities()) >= MIN_QUESTIONS
+
+
+@app.route('/api/ratings', methods=['GET'])
+def get_ratings():
+    df = get_ratings_dataframe()
+
+    output = make_response(df.to_csv())
+    output.headers["Content-Disposition"] = "attachment; filename=export.csv"
+    output.headers["Content-Type"] = "text/csv"
+    return output
 
 
 @app.route('/api/final', methods=['POST'])

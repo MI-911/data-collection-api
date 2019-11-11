@@ -12,16 +12,14 @@ SESSIONS_PATH = 'sessions'
 RATINGS_MAP = {'liked': 1, 'disliked': -1, 'unknown': 0}
 
 
-def post_ratings():
+def get_ratings_dataframe():
     user_entity = get_user_entity_pairs()
 
     print(len(user_entity))
 
     df = DataFrame(user_entity)
 
-    df.to_csv(join(DATA_PATH, 'pairs.csv'))
-
-    print(df.shape)
+    return df
 
 
 def get_user_entity_pairs():
@@ -119,4 +117,4 @@ def is_empty(session):
 
 
 if __name__ == "__main__":
-    post_ratings()
+    get_ratings_dataframe()
