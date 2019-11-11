@@ -62,7 +62,7 @@ def _get_movie_from_row(row):
         'name': f'{row["title"]} ({row["year"]})',
         'image': f'https://www.mindreader.tech/static/movie/{row["imdbId"]}',
         'uri': row["uri"],
-        'resource': "movie",
+        # 'resource': "movie",
         'description': "Movie",
         'summary': row["summary"]
     }
