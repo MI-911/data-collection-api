@@ -9,9 +9,19 @@ genre_query = """SELECT ?genre ?genreLabel ?film WHERE {
                    ?film wdt:P345 "%s".
                  }"""
 
+genre_subclass_query = """SELECT ?subclass WHERE {
+                           SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                           wd:%s wdt:P279 ?subclass.
+                          }"""
+
 subject_query = """SELECT ?subject ?subjectLabel WHERE {
                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                    wd:%s wdt:P921 ?subject.
+                 }"""
+
+company_query = """SELECT ?company ?companyLabel WHERE {
+                   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                   wd:%s wdt:P272 ?company.
                  }"""
 
 actor_query = """SELECT ?actor ?actorLabel ?actorImdb ?actorImage WHERE {
@@ -49,6 +59,15 @@ def get_genres(imdb_id):
     return movie_uri, genres
 
 
+def get_subclasses(entity_id):
+    subclasses = set()
+
+    for result in get_results(genre_subclass_query % entity_id):
+        subclasses.add(result['subclass']['value'])
+
+    return subclasses
+
+
 def get_subjects(entity_id):
     subjects = dict()
 
@@ -56,6 +75,15 @@ def get_subjects(entity_id):
         subjects[result['subject']['value']] = result['subjectLabel']['value']
 
     return subjects
+
+
+def get_companies(entity_id):
+    companies = dict()
+
+    for result in get_results(company_query % entity_id):
+        companies[result['company']['value']] = result['companyLabel']['value']
+
+    return companies
 
 
 def get_people(entity_id):
@@ -82,6 +110,8 @@ def get_people(entity_id):
 
 
 if __name__ == "__main__":
+    print(get_companies('Q171048'))
     actors, directors = get_people('Q171048')
     print(actors)
     print(directors)
+    print(get_subclasses('Q860626'))

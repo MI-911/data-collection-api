@@ -8,3 +8,4 @@ data/movielens/links.csv
 data/movielens/movies.csv
 data/movielens/ratings.csv
 wikidata
+*.tar.gz

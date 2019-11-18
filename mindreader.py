@@ -4,15 +4,22 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
 
-from flask import Flask, jsonify, request, send_from_directory, abort
+from pandas import DataFrame
+
+from encoder import NpEncoder
+from statistics import compute_statistics
+
+from flask import Flask, jsonify, request, send_from_directory, abort, make_response
 from flask_cors import CORS
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch
+from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch, get_triples
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
+from utilities import get_ratings_dataframe
 
 app = Flask(__name__)
 app.secret_key = "XD"
+app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MIN_QUESTIONS = 15
@@ -21,12 +28,16 @@ SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
 
+LAST_N_QUESTIONS = 5
+LAST_N_RATED_QUESTIONS = 2
+
 UUID_LENGTH = 36
 
 LIKED = 'liked'
 DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
 TIMESTAMPS = 'timestamps'
+FINAL = 'final'
 
 SESSION_PATH = 'sessions'
 
@@ -41,13 +52,11 @@ def get_poster(movie):
 
 @app.route('/static/actor/<actor>')
 def get_profile(actor):
-    print(f'{actor} requested')
-
     return send_from_directory('actor_images', f'{actor}.jpg')
 
 
 def _get_samples():
-    samples = dataset.sample(5, get_cross_session_seen_entities())
+    samples = dataset.sample(LAST_N_QUESTIONS*2, get_cross_session_seen_entities())
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
@@ -55,12 +64,18 @@ def _get_movie_from_row(row):
     res = {
         'name': f'{row["title"]} ({row["year"]})',
         'image': f'https://www.mindreader.tech/static/movie/{row["imdbId"]}',
-        'uri': f'{row["uri"]}',
-        'resource': "movie",
+        'uri': row["uri"],
+        # 'resource': "movie",
         'description': "Movie",
-        'movies': []
+        'summary':  row["summary"] if row["summary"] else ""
     }
+
     return res
+
+
+@app.route('/api/statistics')
+def statistics(): 
+    return jsonify(compute_statistics())
 
 
 @app.route('/api/movies')
@@ -88,11 +103,35 @@ def is_done():
     return len(get_rated_entities()) >= MIN_QUESTIONS
 
 
+@app.route('/api/ratings', methods=['GET'])
+def get_ratings():
+    df = get_ratings_dataframe()
+
+    output = make_response(df.to_csv())
+    output.headers["Content-Disposition"] = "attachment; filename=ratings.csv"
+    output.headers["Content-Type"] = "text/csv"
+    return output
+
+
+@app.route('/api/triples', methods=['GET'])
+def get_all_triples():
+    triples = get_triples()
+
+    df = DataFrame.from_records(triples)
+    if triples:
+        df.columns = triples[0].keys()
+
+    output = make_response(df.to_csv())
+    output.headers["Content-Disposition"] = "attachment; filename=triples.csv"
+    output.headers["Content-Type"] = "text/csv"
+    return output
+
+
 @app.route('/api/final', methods=['POST'])
-def update_session_wrapper():
+def final_feedback():
     json_data = request.json
-    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
-    return jsonify('Mah Man! You know inspect mode!')
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), final=True)
+    return jsonify('Mah man! You know inspect mode!')
 
 
 @app.route('/api/feedback', methods=['POST'])
@@ -117,13 +156,29 @@ def feedback():
 
         liked_res, disliked_res = get_next_entities(parallel)
 
+        for uri in set(liked_res).intersection(set(disliked_res)):
+            liked_res = list(filter(lambda u: u != uri, liked_res))
+            disliked_res = list(filter(lambda u: u != uri, disliked_res))
+
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
 
+        samples = _get_samples()
+
+        # Get only N RATED
+        liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:LAST_N_RATED_QUESTIONS]
+        disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:LAST_N_RATED_QUESTIONS]
+
+        for movie in liked_res + disliked_res:
+            samples = list(filter(lambda m: m['uri'] != movie['uri'], samples))
+
+        liked_res = liked_res + samples[:LAST_N_QUESTIONS-len(liked_res)]
+        disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS-len(disliked_res)):]
+
         return jsonify({
             'prediction': True,
-            'likes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:5],
-            'dislikes': [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:5]
+            'likes': liked_res,
+            'dislikes': disliked_res
         })
 
     parallel = []
@@ -158,17 +213,9 @@ def feedback():
     for result in results:
         print(len(result))
 
-    no_duplicates = []
-    [no_duplicates.append(entity) for entity in result_entities if entity not in no_duplicates]
-
-    no_duplicates = sorted(no_duplicates, key=lambda x: x['description'])
+    no_duplicates = sorted({r['uri']: r for r in result_entities}.values(), key=lambda x: x['description'])
 
     return jsonify(no_duplicates)
-
-
-@app.route('/api')
-def main():
-    return 'test'
 
 
 def get_next_entities(parallel):
@@ -193,7 +240,7 @@ def get_session_path(header):
     return os.path.join(SESSION_PATH, f'{header}.json')
 
 
-def update_session(liked, disliked, unknown):
+def update_session(liked, disliked, unknown, final=False):
     header = get_authorization()
     user_session_path = get_session_path(header)
 
@@ -206,7 +253,8 @@ def update_session(liked, disliked, unknown):
                 LIKED: [],
                 DISLIKED: [],
                 UNKNOWN: [],
-                TIMESTAMPS: []
+                TIMESTAMPS: [],
+                FINAL: False
             }
 
         if len(header) > UUID_LENGTH:
@@ -216,6 +264,7 @@ def update_session(liked, disliked, unknown):
     SESSION[header][LIKED] += list(liked)
     SESSION[header][DISLIKED] += list(disliked)
     SESSION[header][UNKNOWN] += list(unknown)
+    SESSION[header][FINAL] = final
 
     print(f'Updating with:')
     print(f'    Likes:    {liked}')
@@ -266,7 +315,9 @@ def get_disliked_entities():
 
 
 def is_invalid_request():
-    return get_authorization() is None
+    authorization = get_authorization()
+
+    return not authorization or '+' not in authorization
 
 
 def get_authorization():
@@ -279,9 +330,8 @@ def get_cross_session_seen_entities():
     if header not in SESSION:
         return []
 
-    return get_cross_session_entities_generic(header, LIKED) + \
-           get_cross_session_entities_generic(header, DISLIKED) + \
-           get_cross_session_entities_generic(header, UNKNOWN)
+    return get_cross_session_entities_generic(header, LIKED) + get_cross_session_entities_generic(header, DISLIKED) + \
+        get_cross_session_entities_generic(header, UNKNOWN)
 
 
 def get_cross_session_entities_generic(header, type):
@@ -291,7 +341,6 @@ def get_cross_session_entities_generic(header, type):
         if key.startswith(head):
             results.extend(value[type])
 
-    print(f'Results {results}')
     return results
 
 

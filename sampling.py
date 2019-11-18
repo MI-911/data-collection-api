@@ -34,6 +34,10 @@ def get_description(record):
         titles.append('Movie')
     if record['genre']:
         titles.append('Genre')
+    if record['decade']:
+        titles.append('Decade')
+    if record['company']:
+        titles.append('Studio')
 
     return ', '.join(titles)
 
@@ -59,31 +63,37 @@ def get_id(record):
 
 
 def get_image(record):
-    print(record)
-    if record['image']:
-        return record['image']
-    elif record['movie']:
+    if record['movie']:
         return f'https://www.mindreader.tech/static/movie/{record["imdb"]}'
     elif _person(record):
         return f'https://www.mindreader.tech/static/actor/{record["imdb"]}'
 
-    pass
+    return record['image']
 
 
 def record_to_entity(record):
+    movie = _movie_from_uri(record['uri']) if record['movie'] else None
+
     return {
-        "name": record['name'],
-        "resource": get_resource(record),
+        "name": f'{movie["title"]} ({movie["year"]})' if movie else record['name'],
+        # "resource": get_resource(record),
         "uri": record['uri'],
         "image": get_image(record),
         "description": get_description(record),
+        "summary": movie["summary"] if movie else None,
         "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
 
 
 def _movie_from_uri(uri):
-    row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
-    return {
-        attr: val
-        for attr, val in zip(movies.columns, next(row, []))
-    }
+    try: 
+        row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
+        if not row: 
+            return None 
+            
+        return {
+            attr: val
+            for attr, val in zip(movies.columns, next(row, []))
+        }
+    except Exception: 
+        return None 

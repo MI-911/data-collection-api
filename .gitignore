@@ -1,6 +1,7 @@
 movie_images/
 movie_actors/
 actor_images/
+statistics.json
 
 # Byte-compiled / optimized / DLL files
 py37-venv/
@@ -115,3 +116,5 @@ venv.bak/
 sessions/
 
 existing_actors.json
+
+*.gz
