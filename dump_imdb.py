@@ -2,6 +2,7 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import tqdm
+from bs4 import Tag
 
 from dataset import movies, links
 from imdb import *
@@ -75,11 +76,15 @@ def save_url_to_file(url, file):
 def handle_movie(imdb_id):
     try:
         soup = get_movie_soup(imdb_id)
-        plot = soup.find('a', attrs={'class': 'ipl-hideable-trigger'})
+        plot_list = soup.find('ul', attrs={'class': 'ipl-content-list'})
+        if not plot_list:
+            return
+
+        plot = plot_list.find('li')
         if not plot:
             return
 
-        plots[imdb_id] = plot.text.split('\n')[0].strip()
+        plots[imdb_id] = plot.text.split('\n')[1].strip()
 
         # Save poster
         # image_url = get_image_path(soup)

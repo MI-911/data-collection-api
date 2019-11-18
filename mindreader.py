@@ -42,16 +42,6 @@ if not os.path.exists(SESSION_PATH):
     os.mkdir(SESSION_PATH)
 
 
-@app.route('/static/movie/<movie>')
-def get_poster(movie):
-    return send_from_directory('movie_images', f'{movie}.jpg')
-
-
-@app.route('/static/actor/<actor>')
-def get_profile(actor):
-    return send_from_directory('actor_images', f'{actor}.jpg')
-
-
 def _get_samples():
     samples = dataset.sample(LAST_N_QUESTIONS*2, get_cross_session_seen_entities())
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
@@ -60,9 +50,8 @@ def _get_samples():
 def _get_movie_from_row(row):
     res = {
         'name': f'{row["title"]} ({row["year"]})',
-        'image': f'https://www.mindreader.tech/static/movie/{row["imdbId"]}',
+        'imdb': row["imdbId"],
         'uri': row["uri"],
-        # 'resource': "movie",
         'description': "Movie",
         'summary': row["summary"]
     }
@@ -238,14 +227,6 @@ def update_session(liked, disliked, unknown, final=False):
     SESSION[header][DISLIKED] += list(disliked)
     SESSION[header][UNKNOWN] += list(unknown)
     SESSION[header][FINAL] = final
-
-    print(f'Updating with:')
-    print(f'    Likes:    {liked}')
-    print(f'    Dislikes: {disliked}')
-    print()
-    print(f'Full history for this user: ')
-    print(f'    Likes:    {SESSION[header][LIKED]}')
-    print(f'    Dislikes: {SESSION[header][DISLIKED]}')
 
     with open(user_session_path, 'w+') as fp:
         json.dump(SESSION[header], fp, indent=True)

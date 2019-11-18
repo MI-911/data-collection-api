@@ -2,7 +2,6 @@ import gc
 import json
 import os
 import re
-from math import log
 from time import time
 
 import numpy as np
@@ -146,7 +145,7 @@ for df in [movies, ratings, links]:
     df.reset_index(inplace=True, drop=True)
 
 # Free ratings from memory
-del ratings, summaries, links
+del ratings, summaries
 gc.collect()
 
 if __name__ == "__main__":
