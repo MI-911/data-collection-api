@@ -27,6 +27,7 @@ MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
+CURRENT_VERSION = '2019-11-18'
 
 LAST_N_QUESTIONS = 5
 LAST_N_RATED_QUESTIONS = 2
@@ -38,6 +39,7 @@ DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
 TIMESTAMPS = 'timestamps'
 FINAL = 'final'
+VERSION = 'version'
 
 SESSION_PATH = 'sessions'
 
@@ -243,7 +245,8 @@ def update_session(liked, disliked, unknown, final=False):
                 DISLIKED: [],
                 UNKNOWN: [],
                 TIMESTAMPS: [],
-                FINAL: False
+                FINAL: False,
+                VERSION: CURRENT_VERSION
             }
 
         if len(header) > UUID_LENGTH:
