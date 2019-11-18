@@ -4,4 +4,8 @@ sessions/
 movie_actors/
 actor_images/
 movie_images/
-data/movielens
+data/movielens/links.csv
+data/movielens/movies.csv
+data/movielens/ratings.csv
+wikidata
+*.tar.gz

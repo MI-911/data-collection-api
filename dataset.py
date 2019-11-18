@@ -1,7 +1,7 @@
+import gc
 import json
 import os
 import re
-from math import log
 from time import time
 
 import numpy as np
@@ -32,12 +32,21 @@ def transform_title(title):
     title = _replace_ends_with(title, 'Il')
     title = _replace_ends_with(title, 'Los')
     title = _replace_ends_with(title, 'Las')
+    title = _replace_ends_with(title, 'An')
 
     return title.strip()
 
 
 def transform_imdb_id(imdb_id):
     return f'tt{str(imdb_id).zfill(7)}'
+
+
+def get_sampling_score(movie_id, k=2000):
+    n = len(ratings)
+    y = get_year(movie_id) - k
+    r = get_num_ratings(movie_id)
+
+    return (r / n) * (np.log(max(1, y)))
 
 
 def sample(count, exclude):
@@ -76,18 +85,18 @@ def get_num_ratings(movie_id):
 def get_year(movie_id): 
     return int(movies[movies['movieId'] == movie_id]['year'].values[-1])
 
-
-data_path = 'data'
-ml_path = os.path.join(data_path, 'movielens')
+DATA_PATH = 'data'
+ml_path = os.path.join(DATA_PATH, 'movielens')
 
 # Load from JSON
-actors = json.load(open(f'{data_path}/actors.json', 'r'))
+actors = json.load(open(f'{DATA_PATH}/actors.json', 'r'))
 
 # Load from CSV
 movies = pd.read_csv(f'{ml_path}/movies.csv')
 ratings = pd.read_csv(f'{ml_path}/ratings.csv')
 links = pd.read_csv(f'{ml_path}/links.csv')
 mapping = pd.read_csv(f'{ml_path}/mapping.csv')
+summaries = pd.read_csv(f'{ml_path}/summaries.csv')
 
 # Get unique genres
 genres_unique = pd.DataFrame(movies.genres.str.split('|').tolist()).stack().unique()
@@ -112,7 +121,9 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
-movies['weight'] = (1 + np.log2([max(1, year - 2000) for year in movies['year']])) * movies['numRatings']
+max_year = max(movies.year) + 1
+# movies['weight'] = [max(1, year - 1990) for year in movies['year']] * movies['numRatings']
+movies['weight'] = movies['numRatings'] / [max_year - year for year in movies['year']]
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')
@@ -122,15 +133,23 @@ movies.imdbId = movies.imdbId.map(transform_imdb_id)
 
 # Merge with mappings
 movies = movies.merge(mapping, on='imdbId')
+movie_uris_set = set(movies.uri)
+
+# Merge with summaries
+movies = movies.merge(summaries, on='imdbId', how='left')
 
 # Apply movieId as index
 for df in [movies, ratings, links]:
     df.sort_values(by='movieId', inplace=True)
     df.reset_index(inplace=True, drop=True)
 
+# Free ratings from memory
+del ratings, summaries
+gc.collect()
+
 if __name__ == "__main__":
     print(movies.shape)
-    for n in range(20):
+    for n in range(10):
         print(f'Starts {time()}')
-        sampled = movies[~movies.title.isin(["test"])].sample(n=30, weights=movies.numRatings)
-        print(sampled)
+        sampled = movies.sample(n=30, weights=movies.weight)
+        print(sampled.title)

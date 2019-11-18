@@ -9,3 +9,5 @@ gunicorn
 sparqlwrapper
 tqdm
 numpy
+Pillow
+scipy

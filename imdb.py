@@ -4,15 +4,15 @@ import requests
 from bs4 import BeautifulSoup
 import re
 from collections import Counter
-from dump_imdb import actors_directory
+import pandas as pd
 
 
 def get_actor_soup(actor_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/name/nm{actor_id}').text, features='lxml')
+    return BeautifulSoup(requests.get(f'https://m.imdb.com/name/{actor_id}').text, features='lxml')
 
 
 def get_movie_soup(movie_id):
-    return BeautifulSoup(requests.get(f'https://imdb.com/title/tt{movie_id}').text, features='lxml')
+    return BeautifulSoup(requests.get(f'https://m.imdb.com/title/{movie_id}/plotsummary').text, features='lxml')
 
 
 def get_actors(soup):
@@ -52,45 +52,13 @@ def get_actor_poster(soup):
     if not poster:
         return None
 
-    return poster['src']
-
-
-def get_actor_sets():
-    sets = []
-
-    for r, d, f in os.walk(actors_directory):
-        for file in f:
-            if '.json' in file:
-                with open(os.path.join(actors_directory, file), 'r') as fp:
-                    sets.append(json.load(fp))
-
-    return sets
-
-
-def get_actor_id_map():
-    names = set()
-    actor_sets = get_actor_sets()
-    actor_id = dict()
-
-    for actor_set in actor_sets:
-        names = names.union(set(actor_set.values()))
-
-    for name in names:
-        ids = []
-        for actor_set in actor_sets:
-            for key, value in actor_set.items():
-                if value == name:
-                    ids.append(key)
-
-        actor_id[name] = Counter(ids).most_common(1)[0][0]
-
-    return actor_id
+    return f"{poster['src'].split('V1')[0]}.jpg"
 
 
 def get_actor_ids():
-    ids = set()
+    with open('data/actors.json', 'r') as fp:
+        return set(json.load(fp))
 
-    for actor_set in get_actor_sets():
-        ids = ids.union(set(actor_set.keys()))
 
-    return ids
+if __name__ == "__main__":
+    print(len(get_actor_ids()))

@@ -34,6 +34,10 @@ def get_description(record):
         titles.append('Movie')
     if record['genre']:
         titles.append('Genre')
+    if record['decade']:
+        titles.append('Decade')
+    if record['company']:
+        titles.append('Studio')
 
     return ', '.join(titles)
 
@@ -52,27 +56,34 @@ def get_resource(record):
 
 
 def get_id(record):
-    if _person(record):
-        return get_actor_id(record['name'])
-    elif record['movie']:
-        return _movie_from_uri(record['uri']['movieId'])
+    if _person(record) or record['movie']:
+        return record['imdb']
 
     return None
 
 
 def record_to_entity(record):
+    movie = _movie_from_uri(record['uri']) if record['movie'] else None
+
     return {
-        "name": record['name'] if record['name'] else record['label'],
-        "id": get_id(record),
-        "resource": get_resource(record),
+        "name": f'{movie["title"]} ({movie["year"]})' if movie else record['name'],
         "uri": record['uri'],
+        "imdb": record['imdb'],
         "description": get_description(record),
+        "summary": movie["summary"] if movie else None,
         "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
     }
 
+
 def _movie_from_uri(uri):
-    row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
-    return {
-        attr : val 
-        for attr, val in zip(movies.columns, next(row, []))
-    }
+    try: 
+        row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
+        if not row: 
+            return None 
+            
+        return {
+            attr: val
+            for attr, val in zip(movies.columns, next(row, []))
+        }
+    except Exception: 
+        return None 
