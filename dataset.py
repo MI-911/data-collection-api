@@ -1,5 +1,6 @@
 import gc
 import json
+import math
 import os
 import re
 from time import time
@@ -120,10 +121,9 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
+# Logarithm is used since importance of movies does not fade linearly with years
 max_year = max(movies.year) + 1
-# movies['weight'] = [max(1, year - 1990) for year in movies['year']] * movies['numRatings']
-# [1 + np.log2(max_year - year) for year in movies['year']]
-movies['weight'] = movies['numRatings'] / [1 + np.log2(max_year - year) for year in movies['year']]
+movies['weight'] = movies['numRatings'] / [max_year - year for year in movies['year']]
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')
@@ -148,6 +148,7 @@ del ratings, summaries
 gc.collect()
 
 if __name__ == "__main__":
+    print(list(movies.sort_values(by='weight')[::-1]['title']))
     for n in range(10):
         print(f'Starts {time()}')
         sampled = movies.sample(n=30, weights=movies.weight)

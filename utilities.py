@@ -1,13 +1,12 @@
 import itertools
 import json
 import os
-from collections import Counter
 from os.path import join
 
 from pandas import DataFrame
 from tqdm import tqdm
 
-from dataset import movie_uris_set, DATA_PATH
+from dataset import movie_uris_set
 
 SESSIONS_PATH = 'sessions'
 RATINGS_MAP = {'liked': 1, 'disliked': -1, 'unknown': 0}
@@ -71,31 +70,42 @@ def get_ratings(filter_final=False, filter_empty=False):
     return uuid_sessions
 
 
-def get_sessions(filter_empty=True):
+def get_sessions(filter_empty=True, versions=None):
     sessions = []
-    for session in os.listdir(SESSIONS_PATH):
-        with open(join(SESSIONS_PATH, session)) as fp:
-            sess = json.load(fp)
+    for session_id in os.listdir(SESSIONS_PATH):
+        with open(join(SESSIONS_PATH, session_id)) as fp:
+            session = json.load(fp)
+
             if filter_empty:
-                if is_empty(sess):
+                if is_empty(session):
                     continue
 
-            sessions.append(sess)
+            if versions:
+                if 'version' not in session or session['version'] not in versions:
+                    continue
+
+            sessions.append(session)
 
     return sessions
 
 
-def get_unique_uuids(filter_final=False, filter_empty=False):
-    if filter_final or filter_empty:
+def get_unique_uuids(filter_final=False, filter_empty=False, versions=None):
+    if filter_final or filter_empty or versions:
         tokens = []
         for session_id in os.listdir(SESSIONS_PATH):
             with open(join(SESSIONS_PATH, session_id)) as fp:
                 session = json.load(fp)
+
                 if filter_empty:
                     if is_empty(session):
                         continue
+
                 if filter_final:
                     if not session['final']:
+                        continue
+
+                if versions:
+                    if 'version' not in session or session['version'] not in versions:
                         continue
 
                 tokens.append(session_id)

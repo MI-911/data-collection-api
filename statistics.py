@@ -1,14 +1,14 @@
 import csv
 import json
-import os
 from collections import Counter
-from os.path import join, exists
-from scipy import median, mean, amin, amax, std, percentile
+from os.path import exists
+
 import numpy as np
+from scipy import median, mean, amin, amax, std, percentile
 
 from dataset import movie_uris_set
 from neo import get_number_entities
-from utilities import get_unique_uuids, SESSIONS_PATH, is_empty, get_sessions
+from utilities import get_unique_uuids, get_sessions
 
 uri_name = dict()
 if exists('uri_name.csv'):
@@ -174,16 +174,13 @@ def get_feedback_distribution(session_set, only_movies=False, only_non_movies=Fa
 
     for session in session_set: 
         uris = filter(session['liked'], only_movies=only_movies, only_non_movies=only_non_movies)
-        for uri in uris: 
-            n_liked += 1
+        n_liked += len(uris)
 
         uris = filter(session['disliked'], only_movies=only_movies, only_non_movies=only_non_movies)
-        for uri in uris: 
-            n_disliked += 1
+        n_disliked += len(uris)
 
         uris = filter(session['unknown'], only_movies=only_movies, only_non_movies=only_non_movies)
-        for uri in uris: 
-            n_unknown += 1
+        n_unknown += len(uris)
 
     n_total = n_liked + n_disliked + n_unknown
     
@@ -198,11 +195,13 @@ def get_feedback_distribution(session_set, only_movies=False, only_non_movies=Fa
     }
 
 
-def compute_statistics():
-    unique_tokens_not_empty = get_unique_uuids(filter_empty=True)
-    unique_tokens_final = get_unique_uuids(filter_final=True)
+def compute_statistics(versions=None):
+    unique_tokens_not_empty = get_unique_uuids(filter_empty=True, versions=versions)
+    unique_tokens_final = get_unique_uuids(filter_final=True, versions=versions)
     
-    sessions = get_sessions(filter_empty=True)
+    sessions = get_sessions(filter_empty=True, versions=versions)
+    if not sessions:
+        return None
     completed_sessions = [session for session in sessions if session['final']]
 
     statistics = {

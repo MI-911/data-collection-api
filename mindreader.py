@@ -27,10 +27,10 @@ MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '2019-11-19'
+CURRENT_VERSION = '2019-11-20'
 
-LAST_N_QUESTIONS = 6
-LAST_N_RATED_QUESTIONS = 3
+LAST_N_QUESTIONS = 5
+LAST_N_RATED_QUESTIONS = 2
 
 UUID_LENGTH = 36
 
@@ -65,8 +65,12 @@ def _get_movie_from_row(row):
 
 
 @app.route('/api/statistics')
-def statistics(): 
-    return jsonify(compute_statistics())
+def statistics():
+    versions = request.args.get('versions')
+    if versions:
+        versions = versions.split(',')
+
+    return jsonify(compute_statistics(versions))
 
 
 @app.route('/api/movies')
