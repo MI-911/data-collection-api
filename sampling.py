@@ -72,6 +72,7 @@ def get_image(record):
 
 
 def record_to_entity(record):
+
     movie = _movie_from_uri(record['uri']) if record['movie'] else None
 
     d = {
@@ -82,11 +83,30 @@ def record_to_entity(record):
         "description": get_description(record),
         "summary": movie["summary"] if movie else None
     }
-    d["movies"] = ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) +
-                   relation if len(d['description']) > 1 else ''
-                   for node, relation in record['movies']]
+    try:
+        d["movies"] = ['{title} ({year})'.format(**_movie_from_uri(dictionary['movie']['uri'])) +
+                   (__get_relation_string(dictionary['relation']) if len(d['description'].split(',')) > 1 else '')
+                   for dictionary in record['movies']]
+    except TypeError as e:
+        d["movies"] = []
 
     return d
+
+
+def __get_relation_string(relation):
+    string = []
+    if 'DIRECTED_BY' in relation:
+        string.append('Director')
+    if 'STARRING' in relation:
+        string.append('Actor')
+
+    if len(string) > 0:
+        string = ', '.join(string)
+        string = f', ({string})'
+    else:
+        string = ''
+
+    return string
 
 
 def _movie_from_uri(uri):

@@ -82,26 +82,29 @@ def _get_schema_label(node):
 
 def get_unseen_entities(source_uris, seen, limit):
     query = """ 
-            MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
-              WITH DISTINCT r
-            ORDER BY r.pagerank DESC
-              WITH LABELS(r)[1] AS label, COLLECT(r)[..25] AS nodes
-              UNWIND nodes AS n
-              WITH label, n, RAND() AS r
-            ORDER BY r
-              WITH label, COLLECT(n)[..3] AS nodes
-              UNWIND nodes AS n WITH n
-            ORDER BY n.pagerank DESC
-              LIMIT $lim
-              WITH id(n) AS id
-            MATCH (r)<--(m:Movie) WHERE id(r) = id
-              WITH r, m
-            ORDER BY m.weight DESC
-              WITH r, collect(DISTINCT m)[..5] as movies
-            RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-              r:Company AS company, r:Decade AS decade, r.uri AS uri,r.name AS name, r:Genre as genre, r.image AS image,
-              r.year AS year, movies
-            """
+        MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
+          WITH DISTINCT r
+        ORDER BY r.pagerank DESC
+          WITH LABELS(r)[1] AS label, COLLECT(r)[..25] AS nodes
+          UNWIND nodes AS n
+          WITH label, n, RAND() AS r
+        ORDER BY r
+          WITH label, COLLECT(n)[..3] AS nodes
+          UNWIND nodes AS n WITH n
+        ORDER BY n.pagerank DESC
+          LIMIT $lim
+          WITH id(n) AS id
+        OPTIONAL MATCH (n)<-[r]-(m:Movie) WHERE id(n) = id
+        WITH algo.asNode(id) AS n, m, type(r) AS relation
+        ORDER BY m.weight DESC
+            WITH n, m, collect(relation) as r
+            WITH n, collect(DISTINCT m)[..5] as movies, r
+        UNWIND (CASE movies WHEN [] then [null] else movies end) AS m
+            WITH n, COLLECT({movie:m, relation: r}) AS movies
+        RETURN n:Director AS director, n:Actor AS actor, n.imdb AS imdb, n:Subject AS subject, n:Movie as movie,
+            n:Company AS company, n:Decade AS decade, n.uri AS uri, n.name AS name, n:Genre as genre, n.image AS image,
+            n.year AS year, movies
+    """
     args = {'suris': source_uris, 'seen': seen, 'lim': limit}
     with driver.session() as session:
         res = session.read_transaction(_generic_get, query, args)
@@ -119,9 +122,10 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
         OPTIONAL MATCH (n)<-[r]-(m:Movie) WHERE id(n) = id
         WITH algo.asNode(id) AS n, m, score, type(r) AS relation
         ORDER BY m.weight DESC
-            WITH n, collect(DISTINCT m)[..5] as movies, relation, score
-        UNWIND movies AS m
-            WITH n, COLLECT({movie:m, relation: relation}) AS movies, relation, score
+            WITH n, m, collect(relation) as r, score
+            WITH n, collect(DISTINCT m)[..5] as movies, r, score
+        UNWIND (CASE movies WHEN [] then [null] else movies end) AS m
+            WITH n, COLLECT({movie:m, relation: r}) AS movies, score
         RETURN n:Director AS director, n:Actor AS actor, n.imdb AS imdb, n:Subject AS subject, n:Movie as movie,
             n:Company AS company, n:Decade AS decade, n.uri AS uri, n.name AS name, n:Genre as genre, n.image AS image,
             n.year AS year, movies, score
