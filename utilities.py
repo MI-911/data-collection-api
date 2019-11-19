@@ -1,3 +1,4 @@
+import itertools
 import json
 import os
 from collections import Counter
@@ -13,13 +14,7 @@ RATINGS_MAP = {'liked': 1, 'disliked': -1, 'unknown': 0}
 
 
 def get_ratings_dataframe():
-    user_entity = get_user_entity_pairs()
-
-    print(len(user_entity))
-
-    df = DataFrame(user_entity)
-
-    return df
+    return DataFrame( get_user_entity_pairs())
 
 
 def get_user_entity_pairs():
@@ -41,7 +36,8 @@ def get_user_entity_pairs():
 def get_ratings(filter_final=False, filter_empty=False):
     uuid_sessions = {}
     categories = ['liked', 'disliked', 'unknown']
-    print("Combining user sessions")
+
+    # Combine user sessions
     for session_id in tqdm(os.listdir(SESSIONS_PATH)):
         uuid = session_id.split('+')[0]
 
@@ -59,21 +55,18 @@ def get_ratings(filter_final=False, filter_empty=False):
 
             [uuid_sessions[uuid][key].update(set(item)) for key, item in sess.items() if key in categories and item]
 
+    # Generate all 2-length combinations of categories
+    category_combinations = list(itertools.combinations(categories, 2))
+
     # Rating not shared among categories
     print("Removing duplicates")
-    for uuid, type_items in tqdm(uuid_sessions.items()):
+    for uuid in tqdm(uuid_sessions.keys()):
+        for primary, secondary in category_combinations:
+            item_intersection = uuid_sessions[uuid][primary].intersection(uuid_sessions[uuid][secondary])
 
-        # Flatten items
-        collected = [item for items in type_items.values() for item in items]
-
-        # Get count
-        collected = Counter(collected)
-
-        # Remove from all categories if count is above 1 (aka. shared among categories)
-        for item, count in collected.items():
-            if count > 1:
-                for rating in uuid_sessions[uuid].keys():
-                    uuid_sessions[uuid][rating].remove(item)
+            if item_intersection:
+                uuid_sessions[uuid][primary] = uuid_sessions[uuid][primary].symmetric_difference(item_intersection)
+                uuid_sessions[uuid][secondary] = uuid_sessions[uuid][secondary].symmetric_difference(item_intersection)
 
     return uuid_sessions
 
