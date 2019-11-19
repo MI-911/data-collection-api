@@ -24,10 +24,22 @@ def get_number_entities():
     return res['count']
 
 
+def get_entities():
+    query = """
+                MATCH (n) RETURN n.uri AS uri, n.name AS name, LABELS(n) AS labels
+            """
+            
+    with driver.session() as session:
+        res = session.read_transaction(_generic_get, query)
+
+    return [record for record in res]
+
+
 def get_triples():
     query = """
-            MATCH (h)-[r]-(t) RETURN h.uri AS head_uri, TYPE(r) AS relation, t.uri AS tail_uri
-        """
+                MATCH (h)-[r]-(t) RETURN h.uri AS head_uri, TYPE(r) AS relation, t.uri AS tail_uri
+            """
+
     with driver.session() as session:
         res = session.read_transaction(_generic_get, query)
 

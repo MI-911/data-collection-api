@@ -118,3 +118,5 @@ sessions/
 existing_actors.json
 
 *.gz
+
+sessions-old/
