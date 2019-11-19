@@ -13,7 +13,7 @@ from flask import Flask, jsonify, request, send_from_directory, abort, make_resp
 from flask_cors import CORS
 
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch, get_triples
+from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch, get_triples, get_entities
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 from utilities import get_ratings_dataframe
 
@@ -91,29 +91,42 @@ def _has_both_sentiments():
 def is_done():
     return len(get_rated_entities()) >= MIN_QUESTIONS
 
+def _make_csv(csv, file_name):
+    output = make_response(csv)
+    output.headers['Content-Disposition'] = f'attachment; filename={file_name}'
+    output.headers['Content-Type'] = 'text/csv'
+
+    return output
+
 
 @app.route('/api/ratings', methods=['GET'])
 def get_ratings():
     df = get_ratings_dataframe()
 
-    output = make_response(df.to_csv())
-    output.headers["Content-Disposition"] = "attachment; filename=ratings.csv"
-    output.headers["Content-Type"] = "text/csv"
-    return output
+    return _make_csv(df.to_csv(), 'ratings.csv')
 
 
 @app.route('/api/triples', methods=['GET'])
 def get_all_triples():
-    triples = get_triples()
+    data = get_triples()
+    df = DataFrame.from_records(data)
+    if data:
+        df.columns = data[0].keys()
 
-    df = DataFrame.from_records(triples)
-    if triples:
-        df.columns = triples[0].keys()
+    return _make_csv(df.to_csv(), 'triples.csv')
 
-    output = make_response(df.to_csv())
-    output.headers["Content-Disposition"] = "attachment; filename=triples.csv"
-    output.headers["Content-Type"] = "text/csv"
-    return output
+
+@app.route('/api/entities', methods=['GET'])
+def get_all_entities():
+    data = get_entities()
+    df = DataFrame.from_records(data)
+    if data:
+        df.columns = data[0].keys()
+    
+    df.set_index('uri', inplace=True)
+    df['labels'] = df['labels'].str.join('|')
+
+    return _make_csv(df.to_csv(), 'entities.csv')
 
 
 @app.route('/api/final', methods=['POST'])

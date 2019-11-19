@@ -13,13 +13,7 @@ RATINGS_MAP = {'liked': 1, 'disliked': -1, 'unknown': 0}
 
 
 def get_ratings_dataframe():
-    user_entity = get_user_entity_pairs()
-
-    print(len(user_entity))
-
-    df = DataFrame(user_entity)
-
-    return df
+    return DataFrame( get_user_entity_pairs())
 
 
 def get_user_entity_pairs():
