@@ -48,7 +48,7 @@ if not os.path.exists(SESSION_PATH):
 
 
 def _get_samples():
-    samples = dataset.sample(LAST_N_QUESTIONS*2, get_cross_session_seen_entities())
+    samples = dataset.sample(LAST_N_QUESTIONS * 2, get_cross_session_seen_entities())
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
@@ -92,6 +92,7 @@ def _has_both_sentiments():
 
 def is_done():
     return len(get_rated_entities()) >= MIN_QUESTIONS
+
 
 def _make_csv(csv, file_name):
     output = make_response(csv)
