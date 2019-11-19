@@ -107,15 +107,16 @@ def get_unseen_entities(source_uris, seen, limit):
           LIMIT $lim
           WITH id(n) AS id
         OPTIONAL MATCH (n)<-[r]-(m:Movie) WHERE id(n) = id
-        WITH algo.asNode(id) AS n, m, type(r) AS relation
-        ORDER BY m.weight DESC
+            WITH algo.asNode(id) AS n, m, type(r) AS relation
             WITH n, m, collect(relation) as r
+        ORDER BY m.weight DESC
             WITH n, collect(DISTINCT m)[..5] as movies, r
         UNWIND (CASE movies WHEN [] then [null] else movies end) AS m
-            WITH n, COLLECT({movie:m, relation: r}) AS movies
+            WITH n, COLLECT({movie:m, relation: r})[..5] AS movies
         RETURN n:Director AS director, n:Actor AS actor, n.imdb AS imdb, n:Subject AS subject, n:Movie as movie,
             n:Company AS company, n:Decade AS decade, n.uri AS uri, n.name AS name, n:Genre as genre, n.image AS image,
             n.year AS year, movies
+        ORDER BY round(rand()), n.pagerank DESC
     """
     args = {'suris': source_uris, 'seen': seen, 'lim': limit}
     with driver.session() as session:
@@ -132,15 +133,16 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
             WITH DISTINCT id(m) AS id, m.pagerank AS score
         ORDER BY score DESC LIMIT 50
         OPTIONAL MATCH (n)<-[r]-(m:Movie) WHERE id(n) = id
-        WITH algo.asNode(id) AS n, m, score, type(r) AS relation
-        ORDER BY m.weight DESC
+            WITH algo.asNode(id) AS n, m, score, type(r) AS relation
             WITH n, m, collect(relation) as r, score
+        ORDER BY m.weight DESC
             WITH n, collect(DISTINCT m)[..5] as movies, r, score
         UNWIND (CASE movies WHEN [] then [null] else movies end) AS m
-            WITH n, COLLECT({movie:m, relation: r}) AS movies, score
+            WITH n, COLLECT({movie:m, relation: r})[..5] AS movies, score
         RETURN n:Director AS director, n:Actor AS actor, n.imdb AS imdb, n:Subject AS subject, n:Movie as movie,
             n:Company AS company, n:Decade AS decade, n.uri AS uri, n.name AS name, n:Genre as genre, n.image AS image,
             n.year AS year, movies, score
+        ORDER BY round(rand()), n.weight DESC, n.pagerank DESC
         """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}

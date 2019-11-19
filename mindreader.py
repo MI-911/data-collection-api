@@ -27,10 +27,10 @@ MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '2019-11-18'
+CURRENT_VERSION = '2019-11-19'
 
-LAST_N_QUESTIONS = 5
-LAST_N_RATED_QUESTIONS = 2
+LAST_N_QUESTIONS = 6
+LAST_N_RATED_QUESTIONS = 3
 
 UUID_LENGTH = 36
 
@@ -47,8 +47,8 @@ if not os.path.exists(SESSION_PATH):
     os.mkdir(SESSION_PATH)
 
 
-def _get_samples():
-    samples = dataset.sample(LAST_N_QUESTIONS * 2, get_cross_session_seen_entities())
+def _get_samples(amount):
+    samples = dataset.sample(amount, get_cross_session_seen_entities())
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
@@ -77,7 +77,7 @@ def movies():
     # Initializes an empty but timestamped session
     update_session([], [], [])
 
-    return jsonify(_get_samples())
+    return jsonify(_get_samples(10))
 
 
 def _get_movie_uris():
@@ -96,6 +96,7 @@ def is_done():
 
 def _make_csv(csv, file_name):
     output = make_response(csv)
+
     output.headers['Content-Disposition'] = f'attachment; filename={file_name}'
     output.headers['Content-Type'] = 'text/csv'
 
@@ -168,7 +169,7 @@ def feedback():
         print(f'l: {liked_res}')
         print(f'd: {disliked_res}')
 
-        samples = _get_samples()
+        samples = _get_samples(LAST_N_QUESTIONS * 2)
 
         # Get only N RATED
         liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:LAST_N_RATED_QUESTIONS]
@@ -177,8 +178,8 @@ def feedback():
         for movie in liked_res + disliked_res:
             samples = list(filter(lambda m: m['uri'] != movie['uri'], samples))
 
-        liked_res = liked_res + samples[:LAST_N_QUESTIONS-len(liked_res)]
-        disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS-len(disliked_res)):]
+        liked_res = liked_res + samples[:LAST_N_QUESTIONS - len(liked_res)]
+        disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS - len(disliked_res)):]
 
         return jsonify({
             'prediction': True,
@@ -198,7 +199,7 @@ def feedback():
     else:
         num_rand += N_ENTITIES
 
-    random_entities = _get_samples()[:num_rand]
+    random_entities = _get_samples(num_rand)
 
     if len(rated_entities) < MINIMUM_SEED_SIZE:
         print('Less than minimum seed size')
