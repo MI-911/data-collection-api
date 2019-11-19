@@ -63,16 +63,40 @@ def get_id(record):
 
 
 def record_to_entity(record):
+
     movie = _movie_from_uri(record['uri']) if record['movie'] else None
 
-    return {
+    d = {
         "name": f'{movie["title"]} ({movie["year"]})' if movie else record['name'],
         "uri": record['uri'],
         "imdb": record['imdb'],
         "description": get_description(record),
-        "summary": movie["summary"] if movie else None,
-        "movies": ['{title} ({year})'.format(**_movie_from_uri(node['uri'])) for node in record['movies']]
+        "summary": movie["summary"] if movie else None
     }
+    try:
+        d["movies"] = ['{title} ({year})'.format(**_movie_from_uri(dictionary['movie']['uri'])) +
+                   (__get_relation_string(dictionary['relation']) if len(d['description'].split(',')) > 1 else '')
+                   for dictionary in record['movies']]
+    except TypeError as e:
+        d["movies"] = []
+
+    return d
+
+
+def __get_relation_string(relation):
+    string = []
+    if 'DIRECTED_BY' in relation:
+        string.append('Director')
+    if 'STARRING' in relation:
+        string.append('Actor')
+
+    if len(string) > 0:
+        string = ', '.join(string)
+        string = f', ({string})'
+    else:
+        string = ''
+
+    return string
 
 
 def _movie_from_uri(uri):
