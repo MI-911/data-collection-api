@@ -116,13 +116,15 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
         MATCH (m) WHERE id(m) = nodeId AND NOT m.uri IN $seen
             WITH DISTINCT id(m) AS id, m.pagerank AS score
         ORDER BY score DESC LIMIT 50
-        OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
-            WITH algo.asNode(id) AS r, m, RAND() AS random, score
+        OPTIONAL MATCH (n)<-[r]-(m:Movie) WHERE id(n) = id
+        WITH algo.asNode(id) AS n, m, score, type(r) AS relation
         ORDER BY m.weight DESC
-            WITH r, collect(DISTINCT m)[..5] as movies, score
-        RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-            r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre, r.image AS image,
-            r.year AS year, movies, score
+            WITH n, collect(DISTINCT m)[..5] as movies, relation, score
+        UNWIND movies AS m
+            WITH n, COLLECT({movie:m, relation: relation}) AS movies, relation, score
+        RETURN n:Director AS director, n:Actor AS actor, n.imdb AS imdb, n:Subject AS subject, n:Movie as movie,
+            n:Company AS company, n:Decade AS decade, n.uri AS uri, n.name AS name, n:Genre as genre, n.image AS image,
+            n.year AS year, movies, score
         """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}
