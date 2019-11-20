@@ -1,16 +1,15 @@
 import json
 import os
 import threading
-from collections import Counter
 from concurrent.futures.thread import ThreadPoolExecutor
 from time import sleep
-from urllib.error import HTTPError, URLError
+from urllib.error import URLError
 import csv
 from tqdm import tqdm
 
 from dataset import movies
 import re
-from query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses
+from scraping.query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses
 
 base_path = 'wikidata'
 csv_path = os.path.join(base_path, 'csv')

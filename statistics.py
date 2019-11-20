@@ -8,7 +8,7 @@ from scipy import median, mean, amin, amax, std, percentile
 
 from dataset import movie_uris_set
 from neo import get_number_entities
-from utilities import get_unique_uuids, get_sessions
+from util.utilities import get_unique_uuids, get_sessions
 
 uri_name = dict()
 if exists('uri_name.csv'):

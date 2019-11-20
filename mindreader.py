@@ -4,18 +4,16 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
 
+from flask import Flask, jsonify, request, abort, make_response
+from flask_cors import CORS
 from pandas import DataFrame
 
-from encoder import NpEncoder
-from statistics import compute_statistics
-
-from flask import Flask, jsonify, request, send_from_directory, abort, make_response
-from flask_cors import CORS
-
 import dataset
+from util.encoder import NpEncoder
 from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch, get_triples, get_entities
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
-from utilities import get_ratings_dataframe
+from statistics import compute_statistics
+from util.utilities import get_ratings_dataframe
 
 app = Flask(__name__)
 app.secret_key = "XD"
@@ -27,7 +25,7 @@ MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '2019-11-20'
+CURRENT_VERSION = '2019-11-20-v2'
 
 LAST_N_QUESTIONS = 5
 LAST_N_RATED_QUESTIONS = 2

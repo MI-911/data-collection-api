@@ -2,10 +2,9 @@ import threading
 from concurrent.futures import ThreadPoolExecutor
 
 import tqdm
-from bs4 import Tag
 
 from dataset import movies, links
-from imdb import *
+from scraping.imdb import *
 from PIL import Image
 
 csv_writer_lock = threading.Lock()
