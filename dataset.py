@@ -1,9 +1,9 @@
 import gc
 import json
-import math
 import os
 import re
 from time import time
+
 import numpy as np
 import pandas as pd
 
@@ -121,7 +121,6 @@ movies = movies.merge(dftmp.dropna(), on='movieId')
 movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
-# Logarithm is used since importance of movies does not fade linearly with years
 max_year = max(movies.year) + 1
 movies['weight'] = movies['numRatings'] / [max_year - year for year in movies['year']]
 

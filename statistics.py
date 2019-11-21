@@ -65,23 +65,18 @@ def get_unknowns(sessions):
 
 
 def get_duration_statistics(sessions): 
-    durations = get_durations(sessions)
-    _min = amin(durations)
-    _max = amax(durations)
-    _mean = mean(durations)
-    _median = median(durations)
-    _std = std(durations)
-    _q1 = percentile(durations, 25)
-    _q3 = percentile(durations, 75)
+    return get_list_statistics(get_durations(sessions))
 
+
+def get_list_statistics(lst):
     return {
-        'min': _min,
-        'max': _max,
-        'avg': _mean,
-        'median': _median,
-        'std': _std,
-        'q1': _q1,
-        'q3': _q3,
+        'min': amin(lst),
+        'max': amax(lst),
+        'avg': mean(lst),
+        'median': median(lst),
+        'std': std(lst),
+        'q1': percentile(lst, 25),
+        'q3': percentile(lst, 75)
     }
 
 
@@ -103,15 +98,7 @@ def get_feedback_statistics(sessions):
             like_to_dislike_ratios.append(_likes / _dislikes)
 
     return {
-        key: {
-            'min': amin(lst),
-            'max': amax(lst),
-            'avg': mean(lst),
-            'median': median(lst),
-            'std': std(lst),
-            'q1': percentile(lst, 25),
-            'q3': percentile(lst, 75)
-        } for key, lst in {
+        key: get_list_statistics(lst) for key, lst in {
             'likes': likes,
             'dislikes': dislikes,
             'unknowns': unknowns,
@@ -143,6 +130,15 @@ def get_unique_entities(session_set):
     return len(items)
 
 
+def _filter(uris, only_movies=False, only_non_movies=False):
+    if only_movies:
+        return [uri for uri in uris if uri in movie_uris_set]
+    elif only_non_movies:
+        return [uri for uri in uris if uri not in movie_uris_set]
+
+    return uris
+
+
 def get_entity_rated_rate(session_set):
     categories = {'liked', 'disliked'}
     items = get_entities_set_from_categories(session_set, categories)
@@ -161,25 +157,39 @@ def get_entities_set_from_categories(session_set, categories):
     return set(items)
 
 
-def get_feedback_distribution(session_set, only_movies=False, only_non_movies=False): 
-    def filter(uris, only_movies=False, only_non_movies=False):
-        if only_movies: 
-            return [uri for uri in uris if uri in movie_uris_set]
-        elif only_non_movies:
-            return [uri for uri in uris if uri not in movie_uris_set]
+def get_movie_ratings(session_set):
+    movie_counts = []
+    other_counts = []
+    total_counts = []
 
-        return uris
+    for session in session_set:
+        rated = set(session['liked'] + session['disliked'])
 
+        movie_count = len(_filter(rated, only_movies=True))
+        other_count = len(_filter(rated, only_non_movies=True))
+
+        movie_counts.append(movie_count)
+        other_counts.append(other_count)
+        total_counts.append(movie_count + other_count)
+
+    return {
+        'movies': get_list_statistics(movie_counts),
+        'others': get_list_statistics(other_counts),
+        'total': get_list_statistics(total_counts)
+    }
+
+
+def get_feedback_distribution(session_set, only_movies=False, only_non_movies=False):
     n_total, n_liked, n_disliked, n_unknown = 0, 0, 0, 0
 
     for session in session_set: 
-        uris = filter(session['liked'], only_movies=only_movies, only_non_movies=only_non_movies)
+        uris = _filter(session['liked'], only_movies=only_movies, only_non_movies=only_non_movies)
         n_liked += len(uris)
 
-        uris = filter(session['disliked'], only_movies=only_movies, only_non_movies=only_non_movies)
+        uris = _filter(session['disliked'], only_movies=only_movies, only_non_movies=only_non_movies)
         n_disliked += len(uris)
 
-        uris = filter(session['unknown'], only_movies=only_movies, only_non_movies=only_non_movies)
+        uris = _filter(session['unknown'], only_movies=only_movies, only_non_movies=only_non_movies)
         n_unknown += len(uris)
 
     n_total = n_liked + n_disliked + n_unknown
@@ -217,7 +227,10 @@ def compute_statistics(versions=None):
             'feedback': get_feedback_statistics(session_set),
             'top': get_top_entities(session_set),
             'n_entities': get_unique_entities(session_set),
-            'rated_rate': get_entity_rated_rate(session_set)
+            'rated_rate': get_entity_rated_rate(session_set),
+            'n_ratings': {
+                'session': get_movie_ratings(session_set)
+            }
         }
         for key, session_set in {'all': sessions, 'completed': completed_sessions}.items()
     }
