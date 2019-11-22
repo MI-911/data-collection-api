@@ -3,6 +3,7 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
+from numpy.random import shuffle
 
 from flask import Flask, jsonify, request, abort, make_response
 from flask_cors import CORS
@@ -25,7 +26,7 @@ MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '2019-11-21-v2'
+CURRENT_VERSION = '2019-11-22'
 
 LAST_N_QUESTIONS = 6
 LAST_N_RATED_QUESTIONS = 3
@@ -168,9 +169,6 @@ def feedback():
             liked_res = list(filter(lambda u: u != uri, liked_res))
             disliked_res = list(filter(lambda u: u != uri, disliked_res))
 
-        print(f'l: {liked_res}')
-        print(f'd: {disliked_res}')
-
         samples = _get_samples(LAST_N_QUESTIONS * 2)
 
         # Get only N RATED
@@ -182,6 +180,9 @@ def feedback():
 
         liked_res = liked_res + samples[:LAST_N_QUESTIONS - len(liked_res)]
         disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS - len(disliked_res)):]
+
+        shuffle(liked_res)
+        shuffle(disliked_res)
 
         return jsonify({
             'prediction': True,
