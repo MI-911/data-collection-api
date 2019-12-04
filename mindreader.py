@@ -108,7 +108,14 @@ def _make_csv(csv, file_name):
 
 @app.route('/api/ratings', methods=['GET'])
 def get_ratings():
-    df = get_ratings_dataframe()
+    final_only = request.args.get('final')
+    final_only = final_only and final_only == 'yes'
+
+    versions = request.args.get('versions')
+    if versions:
+        versions = versions.split(',')
+
+    df = get_ratings_dataframe(final_only, versions)
 
     return _make_csv(df.to_csv(), 'ratings.csv')
 

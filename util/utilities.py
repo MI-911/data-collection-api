@@ -12,12 +12,12 @@ SESSIONS_PATH = 'sessions'
 RATINGS_MAP = {'liked': 1, 'disliked': -1, 'unknown': 0}
 
 
-def get_ratings_dataframe():
-    return DataFrame( get_user_entity_pairs())
+def get_ratings_dataframe(final_only=False, versions=None):
+    return DataFrame(get_user_entity_pairs(final_only, versions))
 
 
-def get_user_entity_pairs():
-    user_uri_ratings = get_ratings(filter_empty=True)
+def get_user_entity_pairs(final_only=False, versions=None):
+    user_uri_ratings = get_ratings(filter_final=final_only, filter_empty=True, versions=versions)
 
     user_entity_pairs = {'userId': [], 'uri': [], 'isItem': [], 'sentiment': []}
 
@@ -32,7 +32,7 @@ def get_user_entity_pairs():
     return user_entity_pairs
 
 
-def get_ratings(filter_final=False, filter_empty=False):
+def get_ratings(filter_final=False, filter_empty=False, versions=None):
     uuid_sessions = {}
     categories = ['liked', 'disliked', 'unknown']
 
@@ -44,15 +44,19 @@ def get_ratings(filter_final=False, filter_empty=False):
             uuid_sessions[uuid] = {'liked': set(), 'disliked': set(), 'unknown': set()}
 
         with open(join(SESSIONS_PATH, session_id)) as fp:
-            sess = json.load(fp)
+            session = json.load(fp)
 
-            if filter_final and not sess['final']:
+            if versions:
+                if 'version' not in session or session['version'] not in versions:
+                    continue
+
+            if filter_final and ('final' not in session or not session['final']):
                 continue
 
-            if filter_empty and is_empty(sess):
+            if filter_empty and is_empty(session):
                 continue
 
-            [uuid_sessions[uuid][key].update(set(item)) for key, item in sess.items() if key in categories and item]
+            [uuid_sessions[uuid][key].update(set(item)) for key, item in session.items() if key in categories and item]
 
     # Generate all 2-length combinations of categories
     category_combinations = list(itertools.combinations(categories, 2))
