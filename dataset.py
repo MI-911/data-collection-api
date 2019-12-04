@@ -89,7 +89,7 @@ DATA_PATH = 'data'
 ml_path = os.path.join(DATA_PATH, 'movielens')
 
 # Load from JSON
-actors = json.load(open(f'{DATA_PATH}/actors.json', 'r'))
+# actors = json.load(open(f'{DATA_PATH}/actors.json', 'r'))
 
 # Load from CSV
 movies = pd.read_csv(f'{ml_path}/movies.csv')
@@ -122,7 +122,7 @@ movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
 max_year = max(movies.year) + 1
-movies['weight'] = movies['numRatings'] / [max_year - year for year in movies['year']]
+movies['weight'] = movies['numRatings'] / [np.log2(max_year - year + 1) for year in movies['year']]
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')

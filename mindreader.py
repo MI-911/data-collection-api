@@ -3,17 +3,17 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
-from numpy.random import shuffle
 
 from flask import Flask, jsonify, request, abort, make_response
 from flask_cors import CORS
+from numpy.random import shuffle
 from pandas import DataFrame
 
 import dataset
-from util.encoder import NpEncoder
-from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch, get_triples, get_entities
-from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
+from neo import get_relevant_neighbors, get_last_batch, get_triples, get_entities
+from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri, _record_choice
 from statistics import compute_statistics
+from util.encoder import NpEncoder
 from util.utilities import get_ratings_dataframe
 
 app = Flask(__name__)
@@ -26,9 +26,9 @@ MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '2019-11-22'
+CURRENT_VERSION = '2019-12-04'
 
-LAST_N_QUESTIONS = 6
+LAST_N_QUESTIONS = 5
 LAST_N_RATED_QUESTIONS = 3
 
 UUID_LENGTH = 36
@@ -165,15 +165,23 @@ def feedback():
 
         liked_res, disliked_res = get_next_entities(parallel)
 
-        for uri in set(liked_res).intersection(set(disliked_res)):
-            liked_res = list(filter(lambda u: u != uri, liked_res))
-            disliked_res = list(filter(lambda u: u != uri, disliked_res))
+        for uri in set([item['uri'] for item in liked_res]).intersection(set([item['uri'] for item in disliked_res])):
+            liked_res = list(filter(lambda u: u['uri'] != uri, liked_res))
+            disliked_res = list(filter(lambda u: u['uri'] != uri, disliked_res))
 
         samples = _get_samples(LAST_N_QUESTIONS * 2)
 
-        # Get only N RATED
-        liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:LAST_N_RATED_QUESTIONS]
-        disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:LAST_N_RATED_QUESTIONS]
+        # Sample from each result
+        liked_res = _record_choice(liked_res, LAST_N_RATED_QUESTIONS)
+        disliked_res = _record_choice(disliked_res, LAST_N_RATED_QUESTIONS)
+
+        # Map to uris
+        liked_res = [item['uri'] for item in liked_res]
+        disliked_res = [item['uri'] for item in disliked_res]
+
+        # Get rows from movies
+        liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res]
+        disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
 
         for movie in liked_res + disliked_res:
             samples = list(filter(lambda m: m['uri'] != movie['uri'], samples))
@@ -205,15 +213,11 @@ def feedback():
     random_entities = _get_samples(num_rand)
 
     if len(rated_entities) < MINIMUM_SEED_SIZE:
-        print('Less than minimum seed size')
-
         # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
     else:
-        print('Minimum seed size met')
-
         parallel.append([get_related_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
@@ -239,9 +243,10 @@ def get_next_entities(parallel):
 
 
 def get_related_entities(entities, seen_entities, lim=None):
-    liked_relevant = get_relevant_neighbors(entities, seen_entities)
-    liked_relevant_list = sample_relevant_neighbours(liked_relevant, lim if lim else N_ENTITIES)
-    return liked_relevant_list
+    print(f'get related {len(entities)}')
+    relevant = sample_relevant_neighbours(get_relevant_neighbors(entities, seen_entities), lim if lim else N_ENTITIES)
+
+    return relevant
 
 
 def get_session_path(header):

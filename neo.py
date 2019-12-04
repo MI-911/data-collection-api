@@ -49,68 +49,20 @@ def get_triples():
 def get_last_batch(source_uris, seen):
     query = """
             MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
-                WITH m.uri AS uri, m.pagerank AS pr, count(r) AS connected
-                WITH collect({uri: uri, pr: pr, c: connected}) AS movies, sum(connected) AS total
+                WITH m.uri AS uri, m.pagerank AS pr, m.weight AS weight, count(r) AS connected
+                WITH collect({uri: uri, pr: pr, weight: weight, c: connected}) AS movies, sum(connected) AS total
                 UNWIND movies as m
-                WITH collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
+                WITH collect({uri: m.uri, weight: m.weight, pr: m.pr, c: 1.0 * m.c / total}) as movies
             UNWIND movies AS movie
-                WITH movie.uri AS uri, movie.pr AS pr, movie.c AS c
-            RETURN uri, pr, sum(c) AS s
-            ORDER BY s DESC, round(rand()), pr DESC
-            LIMIT 10
+                WITH movie.uri AS uri, movie.pr AS pr, movie.weight AS weight, movie.c AS c
+            RETURN uri, pr AS score, sum(c) AS links, weight AS weight
+            ORDER BY links DESC LIMIT 10
             """
     args = {'uris': source_uris, 'seen': seen}
 
     with driver.session() as session:
         res = session.read_transaction(_generic_get, query, args)
-        res = [r['uri'] for r in res]
-
-    return res
-
-
-def get_one_hop_entities(uri):
-    query = "MATCH (m)-[]-(t)  WHERE m.uri = $uri RETURN t"
-    args = {'uri': uri}
-
-    with driver.session() as session:
-        res = session.read_transaction(_generic_get, query, args)
-
-    return [_get_schema_label(n) for n in res.value()]
-
-
-def _get_schema_label(node): 
-    if 'http://www.w3.org/2000/01/rdf-schema#label' in node._properties: 
-        return node._properties['http://www.w3.org/2000/01/rdf-schema#label']
-    else: 
-        return 'N/A'
-
-
-def get_unseen_entities(source_uris, seen, limit):
-    query = """ 
-            MATCH (m:Movie)-->(r) WHERE m.uri IN $suris AND NOT r.uri IN $seen
-              WITH DISTINCT r
-            ORDER BY r.pagerank DESC
-              WITH LABELS(r)[1] AS label, COLLECT(r)[..10] AS nodes
-              UNWIND nodes AS n
-              WITH label, n
-            ORDER BY rand()
-              WITH label, COLLECT(n)[..2] AS nodes
-              UNWIND nodes AS n WITH n
-            ORDER BY n.pagerank DESC
-              LIMIT $lim
-              WITH id(n) AS id
-            MATCH (r)<--(m:Movie) WHERE id(r) = id
-              WITH r, m
-            ORDER BY m.weight DESC
-              WITH r, collect(DISTINCT m)[..5] as movies
-            RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-              r:Company AS company, r:Decade AS decade, r.uri AS uri,r.name AS name, r:Genre as genre, r.image AS image,
-              r.year AS year, movies
-            """
-    args = {'suris': source_uris, 'seen': seen, 'lim': limit}
-    with driver.session() as session:
-        res = session.read_transaction(_generic_get, query, args)
-        res = [r for r in res]
+        res = [{'uri': r['uri'], 'score': r['score'], 'weight': r['weight']} for r in res]
 
     return res
 
@@ -120,14 +72,15 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
             MATCH (n)--(m) WHERE n.uri IN $uris WITH id(m) AS nodeId
             MATCH (m) WHERE id(m) = nodeId AND NOT m.uri IN $seen
                 WITH DISTINCT id(m) AS id, m.pagerank AS score
-            ORDER BY rand() LIMIT 50
+            ORDER BY score
             OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
                 WITH algo.asNode(id) AS r, m, RAND() AS random, score
             ORDER BY m.weight DESC
                 WITH r, collect(DISTINCT m)[..5] as movies, score
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
                 r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre,
-                r.image AS image, r.year AS year, movies, score
+                r:Person as person, r:Category as category, r.image AS image, r.year AS year, r.weight AS weight,
+                movies, score
             """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}
@@ -135,14 +88,5 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
     with driver.session() as session:
         res = session.read_transaction(_generic_get, query, args)
         res = [r for r in res]
-
-    return res
-    
-
-def create_genre(genre, uri):
-    query = "CREATE (n:Genre { `http://www.w3.org/2000/01/rdf-schema#label`: $genre, uri: $uri })"
-    args = {'genre': genre, 'uri': uri}
-    with driver.session() as session:
-        res = session.run(_generic_get, query, args)
 
     return res

@@ -1,6 +1,46 @@
 from random import shuffle
 
+from numpy import random, asarray
+
 from dataset import get_actor_id, movies
+
+
+def _choice(lst, weights):
+    if not lst:
+        return None
+
+    w_sum = weights.sum(axis=0)
+    indices = [idx for idx in range(len(lst))]
+
+    if w_sum:
+        idx = random.choice(indices, p=weights / w_sum, replace=True)
+    else:
+        idx = random.choice(indices)
+
+    element = lst[idx]
+    lst.pop(idx)
+
+    return element
+
+
+def _weights(records):
+    return asarray([entity['weight'] if entity['weight'] else entity['score'] for entity in records])
+
+
+def _record_choice(records, n=1):
+    if n == 1:
+        return _choice(records, _weights(records))
+    else:
+        result = []
+
+        while records and len(result) < n:
+            result.append(_choice(records, _weights(records)))
+
+        return result
+
+
+def _subselection(entities, entity_type):
+    return [entity for entity in entities if entity[entity_type]]
 
 
 def sample_relevant_neighbours(entities, num_entities):
@@ -10,29 +50,28 @@ def sample_relevant_neighbours(entities, num_entities):
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    person = [r for r in entities if r['person']]
-    categories = [r for r in entities if r['categories']]
-    decade = [r for r in entities if r['decade']]
-    company = [r for r in entities if r['company']]
-    movie = [r for r in entities if r['movie']]
+    all_entities = [_subselection(entities, 'person'), _subselection(entities, 'category'),
+                    _subselection(entities, 'decade'), _subselection(entities, 'company')[:1],
+                    _subselection(entities, 'movie')]
+    shuffle(all_entities)
 
-    allentities = [person, categories, decade, company, movie]
-    shuffle(allentities)
+    result = []
 
-    taken = []
+    seen = True
+    while len(result) < num_entities and seen:  # and something to sample
+        seen = False
 
-    cur_index = 0
-    for i in range(num_entities):
-        # Todo sample from one
-        take = allentities[cur_index][0]
+        for subset in all_entities:
+            if len(result) >= num_entities:
+                break
 
-        while list(filter(lambda x: x['uri'] == take['uri'], taken)):
-            take = allentities[cur_index][1]  # Todo sample
+            if not subset:
+                continue
 
-        taken.append(take)
-        cur_index = (cur_index + 1) % 6
+            seen = True
+            result.append(_record_choice(subset))
 
-    return taken
+    return result
 
 
 def get_description(record):
