@@ -21,7 +21,7 @@ app.secret_key = "XD"
 app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-MIN_QUESTIONS = 15
+MIN_QUESTIONS = 25
 MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
@@ -214,7 +214,7 @@ def feedback():
     else:
         print('Minimum seed size met')
 
-        parallel.append([get_unseen_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
+        parallel.append([get_related_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(x) for x in requested_entities]
@@ -238,10 +238,9 @@ def get_next_entities(parallel):
     return [element.result() for element in f]
 
 
-def get_related_entities(entities, seen_entities):
+def get_related_entities(entities, seen_entities, lim=None):
     liked_relevant = get_relevant_neighbors(entities, seen_entities)
-    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3,
-                                                     n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
+    liked_relevant_list = sample_relevant_neighbours(liked_relevant, lim if lim else N_ENTITIES)
     return liked_relevant_list
 
 

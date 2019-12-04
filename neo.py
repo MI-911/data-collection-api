@@ -48,18 +48,11 @@ def get_triples():
 
 def get_last_batch(source_uris, seen):
     query = """
-            MATCH (m:Movie)-->(r) WHERE m.uri IN $uris AND NOT r IN $seen
-                WITH id(r) AS id
-            MATCH (r)<--(m:Movie) WHERE id(r) = id AND NOT m.uri IN $seen
-                WITH m.uri AS uri, m.pagerank AS pr, count(r) AS connected
-                WITH collect({uri: uri, pr: pr, c: connected}) as movies, sum(connected) AS total
-                UNWIND movies as m
-                WITH collect({uri: m.uri, pr: m.pr, c: 1.0 * m.c / total}) as movies
             MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
-                WITH movies, m.uri AS uri, m.pagerank AS pr, count(r) AS connected
-                WITH movies, collect({uri: uri, pr: pr, c: connected}) AS movies2, sum(connected) AS total
-                UNWIND movies2 as m
-                WITH movies + collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
+                WITH m.uri AS uri, m.pagerank AS pr, count(r) AS connected
+                WITH collect({uri: uri, pr: pr, c: connected}) AS movies, sum(connected) AS total
+                UNWIND movies as m
+                WITH collect({uri: m.uri, pr: m.pr, c: 1.0* m.c / total}) as movies
             UNWIND movies AS movie
                 WITH movie.uri AS uri, movie.pr AS pr, movie.c AS c
             RETURN uri, pr, sum(c) AS s
@@ -135,7 +128,6 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
                 r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre,
                 r.image AS image, r.year AS year, movies, score
-            ORDER BY round(rand()), r.pagerank DESC
             """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}

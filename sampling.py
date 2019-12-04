@@ -1,24 +1,38 @@
+from random import shuffle
+
 from dataset import get_actor_id, movies
 
 
-def sample_relevant_neighbours(entities, n_actors=None, n_directors=None, n_subjects=None):
+def sample_relevant_neighbours(entities, num_entities):
     """
     Attempts to sample n_actors, n_directors and n_subjects from the entities.
     Returns an array of entities of size n_actors + n_directors + n_subjects.
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    actors = [r for r in entities if r['actor']]
-    directors = [r for r in entities if r['director']]
-    subjects = [r for r in entities if r['subject']]
+    person = [r for r in entities if r['person']]
+    categories = [r for r in entities if r['categories']]
+    decade = [r for r in entities if r['decade']]
+    company = [r for r in entities if r['company']]
+    movie = [r for r in entities if r['movie']]
 
-    all_entities = actors[:n_actors] + directors[:n_directors] + subjects[:n_subjects]
-    if len(all_entities) < n_actors + n_directors + n_subjects:
-        to_add = (n_actors + n_directors + n_subjects) - len(all_entities)
-        not_added = [r for r in entities if r not in all_entities]
-        all_entities += not_added[:to_add]
+    allentities = [person, categories, decade, company, movie]
+    shuffle(allentities)
 
-    return all_entities
+    taken = []
+
+    cur_index = 0
+    for i in range(num_entities):
+        # Todo sample from one
+        take = allentities[cur_index][0]
+
+        while list(filter(lambda x: x['uri'] == take['uri'], taken)):
+            take = allentities[cur_index][1]  # Todo sample
+
+        taken.append(take)
+        cur_index = (cur_index + 1) % 6
+
+    return taken
 
 
 def get_description(record):
