@@ -200,15 +200,24 @@ def feedback():
 
     parallel = []
     num_rand = N_ENTITIES
+
+    extra = 0
+    if bool(json_data[LIKED]) != bool(json_data[DISLIKED]):
+        extra = N_ENTITIES // 2
+
     if json_data[LIKED]:
-        parallel.append([get_related_entities, list(json_data[LIKED]), seen_entities])
+        parallel.append([get_related_entities, list(json_data[LIKED]), seen_entities,
+                         (N_ENTITIES + extra) if extra else None])
     else:
-        num_rand += N_ENTITIES
+        num_rand += (N_ENTITIES - (N_ENTITIES // 2)) if extra else N_ENTITIES
 
     if json_data[DISLIKED]:
-        parallel.append([get_related_entities, list(json_data[DISLIKED]), seen_entities])
+        parallel.append([get_related_entities, list(json_data[DISLIKED]), seen_entities,
+                         (N_ENTITIES + extra) if extra else None])
     else:
-        num_rand += N_ENTITIES
+        num_rand += (N_ENTITIES - (N_ENTITIES // 2)) if extra else N_ENTITIES
+
+    print(f'num rand {num_rand}')
 
     random_entities = _get_samples(num_rand)
 
@@ -245,7 +254,7 @@ def get_next_entities(parallel):
 def get_related_entities(entities, seen_entities, lim=None):
     print(f'get related {len(entities)}')
     relevant = sample_relevant_neighbours(get_relevant_neighbors(entities, seen_entities), lim if lim else N_ENTITIES)
-
+    print(f'len rel = {len(relevant)}')
     return relevant
 
 
