@@ -58,7 +58,7 @@ def sample_relevant_neighbours(entities, num_entities):
     result = []
 
     seen = True
-    while len(result) < num_entities and seen:  # and something to sample
+    while len(result) < num_entities and seen:
         seen = False
 
         for subset in all_entities:
