@@ -49,14 +49,8 @@ def get_triples():
 def get_last_batch(source_uris, seen):
     query = """
             MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
-                WITH m.uri AS uri, m.pagerank AS pr, m.weight AS weight, count(r) AS connected
-                WITH collect({uri: uri, pr: pr, weight: weight, c: connected}) AS movies, sum(connected) AS total
-                UNWIND movies as m
-                WITH collect({uri: m.uri, weight: m.weight, pr: m.pr, c: 1.0 * m.c / total}) as movies
-            UNWIND movies AS movie
-                WITH movie.uri AS uri, movie.pr AS pr, movie.weight AS weight, movie.c AS c
-            RETURN uri, pr AS score, sum(c) AS links, weight AS weight
-            ORDER BY links DESC LIMIT 10
+                WITH m.uri AS uri, m.pagerank AS score, m.weight AS weight, count(r) AS connected
+            RETURN uri, connected, weight, score ORDER BY connected DESC LIMIT 10
             """
     args = {'uris': source_uris, 'seen': seen}
 
@@ -72,7 +66,7 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
             MATCH (n)--(m) WHERE n.uri IN $uris WITH id(m) AS nodeId
             MATCH (m) WHERE id(m) = nodeId AND NOT m.uri IN $seen
                 WITH DISTINCT id(m) AS id, m.pagerank AS score
-            ORDER BY score
+            ORDER BY rand() LIMIT 100
             OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
                 WITH algo.asNode(id) AS r, m, RAND() AS random, score
             ORDER BY m.weight DESC

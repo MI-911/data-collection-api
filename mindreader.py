@@ -17,7 +17,6 @@ from util.encoder import NpEncoder
 from util.utilities import get_ratings_dataframe
 
 app = Flask(__name__)
-app.secret_key = "XD"
 app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
@@ -252,7 +251,6 @@ def get_next_entities(parallel):
 
 
 def get_related_entities(entities, seen_entities, lim=None):
-    print(f'get related {len(entities)}')
     relevant = sample_relevant_neighbours(get_relevant_neighbors(entities, seen_entities), lim if lim else N_ENTITIES)
     print(f'len rel = {len(relevant)}')
     return relevant
