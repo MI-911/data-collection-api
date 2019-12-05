@@ -63,18 +63,17 @@ def get_last_batch(source_uris, seen):
 
 def get_relevant_neighbors(uri_list, seen_uri_list):
     query = """
-            MATCH (n)--(m) WHERE n.uri IN $uris WITH id(m) AS nodeId
-            MATCH (m) WHERE id(m) = nodeId AND NOT m.uri IN $seen
-                WITH DISTINCT id(m) AS id, m.pagerank AS score
-            ORDER BY rand() LIMIT 100
+            MATCH (n)--(m) WHERE m.uri IN $uris WITH id(n) AS nodeId, count(n) AS connections
+            MATCH (n) WHERE id(n) = nodeId AND NOT n.uri IN $seen
+                WITH DISTINCT id(n) AS id, log(1 + connections) AS multiplier, n.name AS name
             OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
-                WITH algo.asNode(id) AS r, m, RAND() AS random, score
+                WITH algo.asNode(id) AS r, m, multiplier
             ORDER BY m.weight DESC
-                WITH r, collect(DISTINCT m)[..5] as movies, score
+                WITH r, collect(DISTINCT m)[..5] as movies, multiplier
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
-                r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre,
-                r:Person as person, r:Category as category, r.image AS image, r.year AS year, r.weight AS weight,
-                movies, score
+                   r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre,
+                   r:Person as person, r:Category as category, r.image AS image, r.year AS year, movies,
+                   r.pagerank * multiplier AS score
             """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}

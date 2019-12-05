@@ -216,8 +216,6 @@ def feedback():
     else:
         num_rand += (N_ENTITIES - (N_ENTITIES // 2)) if extra else N_ENTITIES
 
-    print(f'num rand {num_rand}')
-
     random_entities = _get_samples(num_rand)
 
     if len(rated_entities) < MINIMUM_SEED_SIZE:
@@ -230,9 +228,6 @@ def feedback():
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(x) for x in requested_entities]
-
-    for result in results:
-        print(len(result))
 
     no_duplicates = sorted({r['uri']: r for r in result_entities}.values(), key=lambda x: x['description'])
 
@@ -250,10 +245,8 @@ def get_next_entities(parallel):
     return [element.result() for element in f]
 
 
-def get_related_entities(entities, seen_entities, lim=None):
-    relevant = sample_relevant_neighbours(get_relevant_neighbors(entities, seen_entities), lim if lim else N_ENTITIES)
-    print(f'len rel = {len(relevant)}')
-    return relevant
+def get_related_entities(entities, seen_entities, limit=None):
+    return sample_relevant_neighbours(get_relevant_neighbors(entities, seen_entities), limit if limit else N_ENTITIES)
 
 
 def get_session_path(header):

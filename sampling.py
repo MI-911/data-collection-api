@@ -24,7 +24,7 @@ def _choice(lst, weights):
 
 
 def _weights(records):
-    return asarray([entity['weight'] if entity['weight'] else entity['score'] for entity in records])
+    return asarray([entity['score'] for entity in records])
 
 
 def _record_choice(records, n=1):
@@ -50,9 +50,9 @@ def sample_relevant_neighbours(entities, num_entities):
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    all_entities = [_subselection(entities, 'person'), _subselection(entities, 'category'),
-                    _subselection(entities, 'decade'), _subselection(entities, 'company')[:1],
-                    _subselection(entities, 'movie')]
+    all_entities = [_subselection(entities, 'movie'), _subselection(entities, 'person'),
+                    _subselection(entities, 'category'), _subselection(entities, 'decade'),
+                    _subselection(entities, 'company')]
     shuffle(all_entities)
 
     result = []
@@ -74,25 +74,34 @@ def sample_relevant_neighbours(entities, num_entities):
     return result
 
 
+def list_concatenation(item_list):
+    if len(item_list) == 1:
+        return item_list[0].capitalize()
+
+    out = ', '.join([item.lower() for item in item_list[:-1]])
+
+    return '{} and {}'.format(out, item_list[-1].lower()).capitalize()
+
+
 def get_description(record):
     titles = []
 
-    if record['director']:
-        titles.append('Director')
     if record['actor']:
-        titles.append('Actor')
+        titles.append('actor')
+    if record['director']:
+        titles.append('director')
     if record['subject']:
-        titles.append('Subject')
+        titles.append('movie subject')
     if record['movie']:
-        titles.append('Movie')
+        titles.append('movie')
     if record['genre']:
-        titles.append('Genre')
+        titles.append('genre')
     if record['decade']:
-        titles.append('Decade')
+        titles.append('decade')
     if record['company']:
-        titles.append('Studio')
+        titles.append('production studio')
 
-    return ', '.join(titles)
+    return list_concatenation(titles)
 
 
 def _person(record):
