@@ -7,7 +7,7 @@ import numpy as np
 from scipy import median, mean, amin, amax, std, percentile
 
 from dataset import movie_uris_set
-from neo import get_number_entities
+from queries import get_number_entities
 from util.utilities import get_unique_uuids, get_sessions
 
 uri_name = dict()

@@ -65,7 +65,7 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
     query = """
             MATCH (n)--(m) WHERE m.uri IN $uris WITH id(n) AS nodeId, count(n) AS connections
             MATCH (n) WHERE id(n) = nodeId AND NOT n.uri IN $seen
-                WITH DISTINCT id(n) AS id, log(1 + connections) AS multiplier, n.name AS name
+                WITH DISTINCT id(n) AS id, connections AS multiplier, n.name AS name
             OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
                 WITH algo.asNode(id) AS r, m, multiplier
             ORDER BY m.weight DESC
@@ -73,7 +73,7 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
                    r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre,
                    r:Person as person, r:Category as category, r.image AS image, r.year AS year, movies,
-                   r.pagerank * multiplier AS score
+                   r.pagerank AS score
             """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}

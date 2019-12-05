@@ -1,5 +1,5 @@
 import gc
-import json
+import math
 import os
 import re
 from time import time
@@ -70,10 +70,6 @@ def get_names(movie_ids):
 
 def get_movies_iter():
     return movies.iterrows()
-
-
-def get_actor_id(actor_name):
-    return actors.get(actor_name, None)
 
 
 def get_num_ratings(movie_id): 

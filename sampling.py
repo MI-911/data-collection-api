@@ -2,7 +2,7 @@ from random import shuffle
 
 from numpy import random, asarray
 
-from dataset import get_actor_id, movies
+from dataset import movies
 
 
 def _choice(lst, weights):
@@ -53,7 +53,6 @@ def sample_relevant_neighbours(entities, num_entities):
     all_entities = [_subselection(entities, 'movie'), _subselection(entities, 'person'),
                     _subselection(entities, 'category'), _subselection(entities, 'decade'),
                     _subselection(entities, 'company')]
-    shuffle(all_entities)
 
     result = []
 
@@ -75,6 +74,9 @@ def sample_relevant_neighbours(entities, num_entities):
 
 
 def list_concatenation(item_list):
+    if not item_list:
+        return 'N/A'
+
     if len(item_list) == 1:
         return item_list[0].capitalize()
 

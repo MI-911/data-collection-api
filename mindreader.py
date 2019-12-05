@@ -10,7 +10,7 @@ from numpy.random import shuffle
 from pandas import DataFrame
 
 import dataset
-from neo import get_relevant_neighbors, get_last_batch, get_triples, get_entities
+from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri, _record_choice
 from statistics import compute_statistics
 from util.encoder import NpEncoder
@@ -21,11 +21,11 @@ app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MIN_QUESTIONS = 25
-MINIMUM_SEED_SIZE = 5
+MINIMUM_SEED_SIZE = 10
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '2019-12-05'
+CURRENT_VERSION = '100k'
 
 LAST_N_QUESTIONS = 5
 LAST_N_RATED_QUESTIONS = 3
