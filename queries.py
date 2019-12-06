@@ -50,7 +50,7 @@ def get_last_batch(source_uris, seen):
     query = """
             MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
                 WITH m.uri AS uri, m.pagerank AS score, m.weight AS weight, count(r) AS connected
-            RETURN uri, connected, weight, score ORDER BY connected DESC LIMIT 10
+            RETURN uri, connected, weight, score ORDER BY connected DESC LIMIT 15
             """
     args = {'uris': source_uris, 'seen': seen}
 
