@@ -25,9 +25,9 @@ MINIMUM_SEED_SIZE = 10
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '100k-newer'
+CURRENT_VERSION = '100k-fix'
 
-LAST_N_QUESTIONS = 5
+LAST_N_QUESTIONS = 6
 LAST_N_RATED_QUESTIONS = 3
 
 UUID_LENGTH = 36
@@ -38,6 +38,7 @@ UNKNOWN = 'unknown'
 TIMESTAMPS = 'timestamps'
 FINAL = 'final'
 VERSION = 'version'
+POPULARITY = 'popularity_sampled'
 
 SESSION_PATH = 'sessions'
 
@@ -47,6 +48,8 @@ if not os.path.exists(SESSION_PATH):
 
 def _get_samples(amount):
     samples = dataset.sample(amount, get_cross_session_seen_entities())
+    update_session([], [], [], list(samples.uri))
+
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
@@ -75,9 +78,6 @@ def statistics():
 def movies():
     if is_invalid_request():
         return abort(400)
-
-    # Initializes an empty but timestamped session
-    update_session([], [], [])
 
     return jsonify(_get_samples(10))
 
@@ -145,7 +145,7 @@ def get_all_entities():
 @app.route('/api/final', methods=['POST'])
 def final_feedback():
     json_data = request.json
-    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), final=True)
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [], final=True)
     return jsonify('Mah man! You know inspect mode!')
 
 
@@ -155,7 +155,7 @@ def feedback():
         return abort(400)
 
     json_data = request.json
-    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [])
 
     seen_entities = get_cross_session_seen_entities()
 
@@ -260,7 +260,7 @@ def get_session_path(header):
     return os.path.join(SESSION_PATH, f'{header}.json')
 
 
-def update_session(liked, disliked, unknown, final=False):
+def update_session(liked, disliked, unknown, popularity_sampled, final=False):
     header = get_authorization()
     user_session_path = get_session_path(header)
 
@@ -274,6 +274,7 @@ def update_session(liked, disliked, unknown, final=False):
                 DISLIKED: [],
                 UNKNOWN: [],
                 TIMESTAMPS: [],
+                POPULARITY: [],
                 FINAL: False,
                 VERSION: CURRENT_VERSION
             }
@@ -284,6 +285,7 @@ def update_session(liked, disliked, unknown, final=False):
     SESSION[header][TIMESTAMPS] += [time.time()]
     SESSION[header][LIKED] += list(liked)
     SESSION[header][DISLIKED] += list(disliked)
+    SESSION[header][POPULARITY] += list(popularity_sampled)
     SESSION[header][UNKNOWN] += list(unknown)
     SESSION[header][FINAL] = final
 
