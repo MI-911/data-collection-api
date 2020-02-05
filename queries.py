@@ -47,10 +47,11 @@ def get_triples():
 
 
 def get_last_batch(source_uris, seen):
+    # count(r) is the number of connections to the movies
     query = """
             MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
-                WITH m.uri AS uri, m.pagerank AS score, m.weight AS weight, count(r) AS connected
-            RETURN uri, connected, weight, score ORDER BY connected DESC, rand() LIMIT 25
+                WITH m.uri AS uri, m.pagerank * count(r) * log(m.weight) AS score, m.weight AS weight
+            RETURN uri, score, weight
             """
     args = {'uris': source_uris, 'seen': seen}
 
@@ -73,7 +74,7 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
                    r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre,
                    r:Person as person, r:Category as category, r.image AS image, r.year AS year, movies,
-                   r.pagerank AS score
+                   r.pagerank * log(1 + multiplier) AS score
             """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}

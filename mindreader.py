@@ -21,11 +21,11 @@ app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 MIN_QUESTIONS = 25
-MINIMUM_SEED_SIZE = 10
+MINIMUM_SEED_SIZE = 5
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '100k-fix'
+CURRENT_VERSION = 'thesis'
 
 LAST_N_QUESTIONS = 6
 LAST_N_RATED_QUESTIONS = 3
