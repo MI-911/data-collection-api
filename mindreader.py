@@ -4,33 +4,31 @@ import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
 
+from flask import Flask, jsonify, request, abort, make_response
+from flask_cors import CORS
+from numpy.random import shuffle
 from pandas import DataFrame
 
-from encoder import NpEncoder
-from statistics import compute_statistics
-
-from flask import Flask, jsonify, request, send_from_directory, abort, make_response
-from flask_cors import CORS
-
 import dataset
-from neo import get_relevant_neighbors, get_unseen_entities, get_last_batch, get_triples
-from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
-from utilities import get_ratings_dataframe
+from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities
+from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri, _record_choice
+from statistics import compute_statistics
+from util.encoder import NpEncoder
+from util.utilities import get_ratings_dataframe
 
 app = Flask(__name__)
-app.secret_key = "XD"
 app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-MIN_QUESTIONS = 15
-MINIMUM_SEED_SIZE = 5
+MIN_QUESTIONS = 25
+MINIMUM_SEED_SIZE = 10
 SESSION = {}
 N_QUESTIONS = 9
 N_ENTITIES = N_QUESTIONS // 3
-CURRENT_VERSION = '2019-11-18'
+CURRENT_VERSION = '100k-fix'
 
-LAST_N_QUESTIONS = 5
-LAST_N_RATED_QUESTIONS = 2
+LAST_N_QUESTIONS = 6
+LAST_N_RATED_QUESTIONS = 3
 
 UUID_LENGTH = 36
 
@@ -40,6 +38,7 @@ UNKNOWN = 'unknown'
 TIMESTAMPS = 'timestamps'
 FINAL = 'final'
 VERSION = 'version'
+POPULARITY = 'popularity_sampled'
 
 SESSION_PATH = 'sessions'
 
@@ -47,8 +46,10 @@ if not os.path.exists(SESSION_PATH):
     os.mkdir(SESSION_PATH)
 
 
-def _get_samples():
-    samples = dataset.sample(LAST_N_QUESTIONS*2, get_cross_session_seen_entities())
+def _get_samples(amount):
+    samples = dataset.sample(amount, get_cross_session_seen_entities())
+    update_session([], [], [], list(samples.uri))
+
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
 
 
@@ -65,8 +66,12 @@ def _get_movie_from_row(row):
 
 
 @app.route('/api/statistics')
-def statistics(): 
-    return jsonify(compute_statistics())
+def statistics():
+    versions = request.args.get('versions')
+    if versions:
+        versions = versions.split(',')
+
+    return jsonify(compute_statistics(versions))
 
 
 @app.route('/api/movies')
@@ -74,10 +79,7 @@ def movies():
     if is_invalid_request():
         return abort(400)
 
-    # Initializes an empty but timestamped session
-    update_session([], [], [])
-
-    return jsonify(_get_samples())
+    return jsonify(_get_samples(10))
 
 
 def _get_movie_uris():
@@ -94,34 +96,56 @@ def is_done():
     return len(get_rated_entities()) >= MIN_QUESTIONS
 
 
+def _make_csv(csv, file_name):
+    output = make_response(csv)
+
+    output.headers['Content-Disposition'] = f'attachment; filename={file_name}'
+    output.headers['Content-Type'] = 'text/csv'
+
+    return output
+
+
 @app.route('/api/ratings', methods=['GET'])
 def get_ratings():
-    df = get_ratings_dataframe()
+    final_only = request.args.get('final')
+    final_only = final_only and final_only == 'yes'
 
-    output = make_response(df.to_csv())
-    output.headers["Content-Disposition"] = "attachment; filename=ratings.csv"
-    output.headers["Content-Type"] = "text/csv"
-    return output
+    versions = request.args.get('versions')
+    if versions:
+        versions = versions.split(',')
+
+    df = get_ratings_dataframe(final_only, versions)
+
+    return _make_csv(df.to_csv(), 'ratings.csv')
 
 
 @app.route('/api/triples', methods=['GET'])
 def get_all_triples():
-    triples = get_triples()
+    data = get_triples()
+    df = DataFrame.from_records(data)
+    if data:
+        df.columns = data[0].keys()
 
-    df = DataFrame.from_records(triples)
-    if triples:
-        df.columns = triples[0].keys()
+    return _make_csv(df.to_csv(), 'triples.csv')
 
-    output = make_response(df.to_csv())
-    output.headers["Content-Disposition"] = "attachment; filename=triples.csv"
-    output.headers["Content-Type"] = "text/csv"
-    return output
+
+@app.route('/api/entities', methods=['GET'])
+def get_all_entities():
+    data = get_entities()
+    df = DataFrame.from_records(data)
+    if data:
+        df.columns = data[0].keys()
+    
+    df.set_index('uri', inplace=True)
+    df['labels'] = df['labels'].str.join('|')
+
+    return _make_csv(df.to_csv(), 'entities.csv')
 
 
 @app.route('/api/final', methods=['POST'])
 def final_feedback():
     json_data = request.json
-    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), final=True)
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [], final=True)
     return jsonify('Mah man! You know inspect mode!')
 
 
@@ -131,7 +155,7 @@ def feedback():
         return abort(400)
 
     json_data = request.json
-    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]))
+    update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [])
 
     seen_entities = get_cross_session_seen_entities()
 
@@ -147,24 +171,32 @@ def feedback():
 
         liked_res, disliked_res = get_next_entities(parallel)
 
-        for uri in set(liked_res).intersection(set(disliked_res)):
-            liked_res = list(filter(lambda u: u != uri, liked_res))
-            disliked_res = list(filter(lambda u: u != uri, disliked_res))
+        for uri in set([item['uri'] for item in liked_res]).intersection(set([item['uri'] for item in disliked_res])):
+            liked_res = list(filter(lambda u: u['uri'] != uri, liked_res))
+            disliked_res = list(filter(lambda u: u['uri'] != uri, disliked_res))
 
-        print(f'l: {liked_res}')
-        print(f'd: {disliked_res}')
+        samples = _get_samples(LAST_N_QUESTIONS * 2)
 
-        samples = _get_samples()
+        # Sample from each result
+        liked_res = _record_choice(liked_res, LAST_N_RATED_QUESTIONS)
+        disliked_res = _record_choice(disliked_res, LAST_N_RATED_QUESTIONS)
 
-        # Get only N RATED
-        liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res][:LAST_N_RATED_QUESTIONS]
-        disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res][:LAST_N_RATED_QUESTIONS]
+        # Map to uris
+        liked_res = [item['uri'] for item in liked_res]
+        disliked_res = [item['uri'] for item in disliked_res]
+
+        # Get rows from movies
+        liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res]
+        disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
 
         for movie in liked_res + disliked_res:
             samples = list(filter(lambda m: m['uri'] != movie['uri'], samples))
 
-        liked_res = liked_res + samples[:LAST_N_QUESTIONS-len(liked_res)]
-        disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS-len(disliked_res)):]
+        liked_res = liked_res + samples[:LAST_N_QUESTIONS - len(liked_res)]
+        disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS - len(disliked_res)):]
+
+        shuffle(liked_res)
+        shuffle(disliked_res)
 
         return jsonify({
             'prediction': True,
@@ -174,35 +206,35 @@ def feedback():
 
     parallel = []
     num_rand = N_ENTITIES
+
+    extra = 0
+    if bool(json_data[LIKED]) != bool(json_data[DISLIKED]):
+        extra = N_ENTITIES // 2
+
     if json_data[LIKED]:
-        parallel.append([get_related_entities, list(json_data[LIKED]), seen_entities])
+        parallel.append([get_related_entities, list(json_data[LIKED]), seen_entities,
+                         (N_ENTITIES + extra) if extra else None])
     else:
-        num_rand += N_ENTITIES
+        num_rand += (N_ENTITIES - (N_ENTITIES // 2)) if extra else N_ENTITIES
 
     if json_data[DISLIKED]:
-        parallel.append([get_related_entities, list(json_data[DISLIKED]), seen_entities])
+        parallel.append([get_related_entities, list(json_data[DISLIKED]), seen_entities,
+                         (N_ENTITIES + extra) if extra else None])
     else:
-        num_rand += N_ENTITIES
+        num_rand += (N_ENTITIES - (N_ENTITIES // 2)) if extra else N_ENTITIES
 
-    random_entities = _get_samples()[:num_rand]
+    random_entities = _get_samples(num_rand)
 
     if len(rated_entities) < MINIMUM_SEED_SIZE:
-        print('Less than minimum seed size')
-
         # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
     else:
-        print('Minimum seed size met')
-
-        parallel.append([get_unseen_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
+        parallel.append([get_related_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(x) for x in requested_entities]
-
-    for result in results:
-        print(len(result))
 
     no_duplicates = sorted({r['uri']: r for r in result_entities}.values(), key=lambda x: x['description'])
 
@@ -220,18 +252,15 @@ def get_next_entities(parallel):
     return [element.result() for element in f]
 
 
-def get_related_entities(entities, seen_entities):
-    liked_relevant = get_relevant_neighbors(entities, seen_entities)
-    liked_relevant_list = sample_relevant_neighbours(liked_relevant, n_actors=N_ENTITIES // 3,
-                                                     n_directors=N_ENTITIES // 3, n_subjects=N_ENTITIES // 3)
-    return liked_relevant_list
+def get_related_entities(entities, seen_entities, limit=None):
+    return sample_relevant_neighbours(get_relevant_neighbors(entities, seen_entities), limit if limit else N_ENTITIES)
 
 
 def get_session_path(header):
     return os.path.join(SESSION_PATH, f'{header}.json')
 
 
-def update_session(liked, disliked, unknown, final=False):
+def update_session(liked, disliked, unknown, popularity_sampled, final=False):
     header = get_authorization()
     user_session_path = get_session_path(header)
 
@@ -245,6 +274,7 @@ def update_session(liked, disliked, unknown, final=False):
                 DISLIKED: [],
                 UNKNOWN: [],
                 TIMESTAMPS: [],
+                POPULARITY: [],
                 FINAL: False,
                 VERSION: CURRENT_VERSION
             }
@@ -255,6 +285,7 @@ def update_session(liked, disliked, unknown, final=False):
     SESSION[header][TIMESTAMPS] += [time.time()]
     SESSION[header][LIKED] += list(liked)
     SESSION[header][DISLIKED] += list(disliked)
+    SESSION[header][POPULARITY] += list(popularity_sampled)
     SESSION[header][UNKNOWN] += list(unknown)
     SESSION[header][FINAL] = final
 

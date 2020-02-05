@@ -1,45 +1,109 @@
-from dataset import get_actor_id, movies
+from random import shuffle
+
+from numpy import random, asarray
+
+from dataset import movies
 
 
-def sample_relevant_neighbours(entities, n_actors=None, n_directors=None, n_subjects=None):
+def _choice(lst, weights):
+    if not lst:
+        return None
+
+    w_sum = weights.sum(axis=0)
+    indices = [idx for idx in range(len(lst))]
+
+    if w_sum:
+        idx = random.choice(indices, p=weights / w_sum, replace=True)
+    else:
+        idx = random.choice(indices)
+
+    element = lst[idx]
+    lst.pop(idx)
+
+    return element
+
+
+def _weights(records):
+    return asarray([entity['score'] for entity in records])
+
+
+def _record_choice(records, n=1):
+    if n == 1:
+        return _choice(records, _weights(records))
+    else:
+        result = []
+
+        while records and len(result) < n:
+            result.append(_choice(records, _weights(records)))
+
+        return result
+
+
+def _subselection(entities, entity_type):
+    return [entity for entity in entities if entity[entity_type]]
+
+
+def sample_relevant_neighbours(entities, num_entities):
     """
     Attempts to sample n_actors, n_directors and n_subjects from the entities.
     Returns an array of entities of size n_actors + n_directors + n_subjects.
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    actors = [r for r in entities if r['actor']]
-    directors = [r for r in entities if r['director']]
-    subjects = [r for r in entities if r['subject']]
+    all_entities = [_subselection(entities, 'movie'), _subselection(entities, 'person'),
+                    _subselection(entities, 'category'), _subselection(entities, 'decade'),
+                    _subselection(entities, 'company')]
 
-    all_entities = actors[:n_actors] + directors[:n_directors] + subjects[:n_subjects]
-    if len(all_entities) < n_actors + n_directors + n_subjects:
-        to_add = (n_actors + n_directors + n_subjects) - len(all_entities)
-        not_added = [r for r in entities if r not in all_entities]
-        all_entities += not_added[:to_add]
+    result = []
 
-    return all_entities
+    seen = True
+    while len(result) < num_entities and seen:
+        seen = False
+
+        for subset in all_entities:
+            if len(result) >= num_entities:
+                break
+
+            if not subset:
+                continue
+
+            seen = True
+            result.append(_record_choice(subset))
+
+    return result
+
+
+def list_concatenation(item_list):
+    if not item_list:
+        return 'N/A'
+
+    if len(item_list) == 1:
+        return item_list[0].capitalize()
+
+    out = ', '.join([item.lower() for item in item_list[:-1]])
+
+    return '{} and {}'.format(out, item_list[-1].lower()).capitalize()
 
 
 def get_description(record):
     titles = []
 
-    if record['director']:
-        titles.append('Director')
     if record['actor']:
-        titles.append('Actor')
+        titles.append('actor')
+    if record['director']:
+        titles.append('director')
     if record['subject']:
-        titles.append('Subject')
+        titles.append('movie subject')
     if record['movie']:
-        titles.append('Movie')
+        titles.append('movie')
     if record['genre']:
-        titles.append('Genre')
+        titles.append('genre')
     if record['decade']:
-        titles.append('Decade')
+        titles.append('decade')
     if record['company']:
-        titles.append('Studio')
+        titles.append('production studio')
 
-    return ', '.join(titles)
+    return list_concatenation(titles)
 
 
 def _person(record):
@@ -76,14 +140,14 @@ def record_to_entity(record):
 
 
 def _movie_from_uri(uri):
-    try: 
+    try:
         row = iter(movies.loc[movies['uri'] == uri, movies.columns].values)
-        if not row: 
-            return None 
-            
+        if not row:
+            return None
+
         return {
             attr: val
             for attr, val in zip(movies.columns, next(row, []))
         }
-    except Exception: 
-        return None 
+    except Exception:
+        return None

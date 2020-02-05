@@ -1,8 +1,9 @@
 import gc
-import json
+import math
 import os
 import re
 from time import time
+
 import numpy as np
 import pandas as pd
 
@@ -71,10 +72,6 @@ def get_movies_iter():
     return movies.iterrows()
 
 
-def get_actor_id(actor_name):
-    return actors.get(actor_name, None)
-
-
 def get_num_ratings(movie_id): 
     if movie_id not in NUM_RATINGS_MAP: 
         NUM_RATINGS_MAP[movie_id] = len(ratings[ratings['movieId'] == movie_id])
@@ -88,7 +85,7 @@ DATA_PATH = 'data'
 ml_path = os.path.join(DATA_PATH, 'movielens')
 
 # Load from JSON
-actors = json.load(open(f'{DATA_PATH}/actors.json', 'r'))
+# actors = json.load(open(f'{DATA_PATH}/actors.json', 'r'))
 
 # Load from CSV
 movies = pd.read_csv(f'{ml_path}/movies.csv')
@@ -121,9 +118,7 @@ movies = movies[movies['numRatings'].ge(int(dftmp.median()))]
 
 # Get weights for sampling
 max_year = max(movies.year) + 1
-# movies['weight'] = [max(1, year - 1990) for year in movies['year']] * movies['numRatings']
-# [1 + np.log2(max_year - year) for year in movies['year']]
-movies['weight'] = movies['numRatings'] / [max_year - year for year in movies['year']]
+movies['weight'] = movies['numRatings'] * [max(1, year - 2000) for year in movies['year']]
 
 # Merge movies with links links
 movies = movies.merge(links, on='movieId')
@@ -148,6 +143,7 @@ del ratings, summaries
 gc.collect()
 
 if __name__ == "__main__":
+    print(list(movies.sort_values(by='weight')[::-1]['title']))
     for n in range(10):
         print(f'Starts {time()}')
         sampled = movies.sample(n=30, weights=movies.weight)

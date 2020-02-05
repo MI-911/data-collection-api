@@ -1,16 +1,15 @@
 import json
 import os
 import threading
-from collections import Counter
 from concurrent.futures.thread import ThreadPoolExecutor
 from time import sleep
-from urllib.error import HTTPError, URLError
+from urllib.error import URLError
 import csv
 from tqdm import tqdm
 
 from dataset import movies
 import re
-from query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses
+from scraping.query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses
 
 base_path = 'wikidata'
 csv_path = os.path.join(base_path, 'csv')
@@ -38,6 +37,9 @@ movie_uri = json.load(open(movie_uri_path, 'r'))
 seen_uris = set() # set(movie_uri.values())
 entity_ids = {key: value.split('/')[-1] for (key, value) in movie_uri.items()}
 lock = threading.Lock()
+
+imdb_ids = set(movies['imdbId'])
+movie_uri = {imdb: uri for imdb, uri in movie_uri.items() if imdb in imdb_ids}
 
 
 def handle_chunks(fn, chunks, workers=15):
@@ -270,7 +272,6 @@ def write_categories():
 
 def write_movie_companies():
     movie_companies = json.load(open(movie_companies_path, 'r'))
-    movie_uri = json.load(open(movie_uri_path, 'r'))
 
     with open(os.path.join(csv_path, 'movie_company.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
@@ -286,7 +287,6 @@ def write_movie_companies():
 
 def write_movie_subjects():
     movie_subjects = json.load(open(movie_subjects_path, 'r'))
-    movie_uri = json.load(open(movie_uri_path, 'r'))
 
     with open(os.path.join(csv_path, 'movie_subject.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
@@ -302,7 +302,6 @@ def write_movie_subjects():
 
 def write_movie_genres():
     movie_genres = json.load(open(movie_genres_path, 'r'))
-    movie_uri = json.load(open(movie_uri_path, 'r'))
 
     with open(os.path.join(csv_path, 'movie_genre.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
@@ -318,7 +317,6 @@ def write_movie_genres():
 
 def _write_movie_person(source, dest, relation, valid_people):
     movie_persons = json.load(open(source, 'r'))
-    movie_uri = json.load(open(movie_uri_path, 'r'))
 
     with open(os.path.join(csv_path, dest), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
@@ -402,9 +400,9 @@ def titlecase(s):
 
 
 if __name__ == "__main__":
-    write_triples()
-    write_uri_names()
-    exit(0)
+    # write_triples()
+    # write_uri_names()
+    # exit(0)
     write_movies()
     write_companies()
     write_movie_companies()

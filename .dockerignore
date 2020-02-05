@@ -9,3 +9,5 @@ data/movielens/movies.csv
 data/movielens/ratings.csv
 wikidata
 *.tar.gz
+data/movielens/20m
+data/movielens/100k
