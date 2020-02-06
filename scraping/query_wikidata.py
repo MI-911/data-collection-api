@@ -9,6 +9,11 @@ genre_query = """SELECT ?genre ?genreLabel ?film WHERE {
                    ?film wdt:P345 "%s".
                  }"""
 
+sequel_query = """SELECT ?sequel ?sequelLabel WHERE {
+                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                    wd:%s wdt:P156 ?sequel.
+                  }"""
+
 genre_subclass_query = """SELECT ?subclass WHERE {
                            SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                            wd:%s wdt:P279 ?subclass.
@@ -107,6 +112,10 @@ def get_people(entity_id):
         directors[director_uri] = dict(imdb=director_imdb, name=director_name, image=director_image)
 
     return actors, directors
+
+
+def get_sequel(movie_id):
+    pass
 
 
 if __name__ == "__main__":

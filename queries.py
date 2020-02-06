@@ -50,7 +50,7 @@ def get_last_batch(source_uris, seen):
     # count(r) is the number of connections to the movies
     query = """
             MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
-                WITH m.uri AS uri, m.pagerank * count(r) * log(m.weight) AS score, m.weight AS weight
+                WITH m.uri AS uri, m.pagerank * log(1 + count(r)) * log(1 + m.weight) AS score, m.weight AS weight
             RETURN uri, score, weight
             """
     args = {'uris': source_uris, 'seen': seen}
