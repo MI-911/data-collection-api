@@ -4,37 +4,43 @@ endpoint_url = 'https://query.wikidata.org/sparql'
 user_agent = 'MI911 <mi911e19@cs.aau.dk>'
 
 genre_query = """SELECT ?genre ?genreLabel ?film WHERE {
-                   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-                   ?film wdt:P136 ?genre.
-                   ?film wdt:P345 "%s".
-                 }"""
+                 SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                 ?film wdt:P136 ?genre.
+                 ?film wdt:P345 "%s".
+              }"""
 
-sequel_query = """SELECT ?sequel ?sequelLabel WHERE {
-                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-                    wd:%s wdt:P156 ?sequel.
-                  }"""
+sequel_query = """SELECT ?sequel WHERE {
+                  SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                  wd:%s wdt:P156 ?sequel.
+               }"""
+
+series_sequel_query = """SELECT ?sequel {
+                         SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                         wd:%s p:P179 ?series.
+                         ?series pq:P156 ?sequel.
+                      }"""
 
 genre_subclass_query = """SELECT ?subclass WHERE {
                            SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                            wd:%s wdt:P279 ?subclass.
-                          }"""
+                       }"""
 
 subject_query = """SELECT ?subject ?subjectLabel WHERE {
                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                    wd:%s wdt:P921 ?subject.
-                 }"""
+                }"""
 
 company_query = """SELECT ?company ?companyLabel WHERE {
                    SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
                    wd:%s wdt:P272 ?company.
-                 }"""
+                }"""
 
 actor_query = """SELECT ?actor ?actorLabel ?actorImdb ?actorImage WHERE {
-                   SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
-                   {wd:%s wdt:P161 ?actor} UNION {wd:%s wdt:P725 ?actor}.
-                   ?actor wdt:P345 ?actorImdb.
-                   OPTIONAL { ?actor wdt:P18 ?actorImage }.
-                 }"""
+                 SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
+                 {wd:%s wdt:P161 ?actor} UNION {wd:%s wdt:P725 ?actor}.
+                 ?actor wdt:P345 ?actorImdb.
+                 OPTIONAL { ?actor wdt:P18 ?actorImage }.
+              }"""
 
 director_query = """SELECT ?director ?directorLabel ?directorImdb ?directorImage WHERE {
                       SERVICE wikibase:label { bd:serviceParam wikibase:language "en". }
@@ -62,6 +68,18 @@ def get_genres(imdb_id):
         genres[result['genre']['value']] = result['genreLabel']['value']
 
     return movie_uri, genres
+
+
+def get_sequels(entity_id):
+    sequels = set()
+
+    for result in get_results(series_sequel_query % entity_id):
+        sequels.add(result['sequel']['value'])
+
+    for result in get_results(sequel_query % entity_id):
+        sequels.add(result['sequel']['value'])
+
+    return sequels
 
 
 def get_subclasses(entity_id):
@@ -114,13 +132,5 @@ def get_people(entity_id):
     return actors, directors
 
 
-def get_sequel(movie_id):
-    pass
-
-
 if __name__ == "__main__":
-    print(get_companies('Q171048'))
-    actors, directors = get_people('Q171048')
-    print(actors)
-    print(directors)
-    print(get_subclasses('Q860626'))
+    print(get_sequels('Q181803'))

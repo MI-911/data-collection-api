@@ -9,7 +9,7 @@ from tqdm import tqdm
 
 from dataset import movies
 import re
-from scraping.query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses
+from scraping.query_wikidata import get_genres, get_people, get_subjects, get_companies, get_subclasses, get_sequels
 
 base_path = 'wikidata'
 csv_path = os.path.join(base_path, 'csv')
@@ -22,6 +22,7 @@ movie_directors_path = os.path.join(base_path, 'movie_directors.json')
 movie_actors_path = os.path.join(base_path, 'movie_actors.json')
 movie_uri_path = os.path.join(base_path, 'movie_uri.json')
 movie_subjects_path = os.path.join(base_path, 'movie_subjects.json')
+movie_sequels_path = os.path.join(base_path, 'movie_sequels.json')
 movie_companies_path = os.path.join(base_path, 'movie_companies.json')
 
 genres = dict()
@@ -33,6 +34,7 @@ movie_directors = dict()
 movie_actors = dict()
 movie_genres = dict()
 movie_subjects = dict()
+movie_sequels = dict()
 movie_uri = json.load(open(movie_uri_path, 'r'))
 seen_uris = set() # set(movie_uri.values())
 entity_ids = {key: value.split('/')[-1] for (key, value) in movie_uri.items()}
@@ -42,7 +44,7 @@ imdb_ids = set(movies['imdbId'])
 movie_uri = {imdb: uri for imdb, uri in movie_uri.items() if imdb in imdb_ids}
 
 
-def handle_chunks(fn, chunks, workers=15):
+def handle_chunks(fn, chunks, workers=20):
     executor = ThreadPoolExecutor(max_workers=workers)
     futures = []
     for chunk in chunks:
@@ -74,6 +76,20 @@ def dump_subjects():
 
     with open(movie_subjects_path, 'w') as fp:
         json.dump(movie_subjects, fp)
+
+
+def dump_sequels():
+    def handle(value):
+        try:
+            movie_sequels[value] = list(get_sequels(entity_ids[value]))
+        except URLError:
+            sleep(2.5)
+            return handle(value)
+
+    handle_chunks(handle, movies[movies.imdbId.isin(entity_ids.keys())].imdbId)
+
+    with open(movie_sequels_path, 'w') as fp:
+        json.dump(movie_sequels, fp)
 
 
 def dump_companies():
@@ -300,6 +316,21 @@ def write_movie_subjects():
                 writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'HAS_SUBJECT'})
 
 
+def write_movie_sequels():
+    movie_sequels = json.load(open(movie_sequels_path, 'r'))
+
+    with open(os.path.join(csv_path, 'movie_sequel.csv'), 'w') as fp:
+        writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
+        writer.writeheader()
+
+        for key, value in movie_sequels.items():
+            if not value or key not in movie_uri:
+                continue
+
+            for tail in value:
+                writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'FOLLOWED_BY'})
+
+
 def write_movie_genres():
     movie_genres = json.load(open(movie_genres_path, 'r'))
 
@@ -307,12 +338,15 @@ def write_movie_genres():
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
+        movie_uris = set(movie_uri.values())
+
         for key, value in movie_genres.items():
             if not value or key not in movie_uri:
                 continue
 
             for tail in value:
-                writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'HAS_GENRE'})
+                if tail in movie_uris:
+                    writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'HAS_GENRE'})
 
 
 def _write_movie_person(source, dest, relation, valid_people):
@@ -400,6 +434,9 @@ def titlecase(s):
 
 
 if __name__ == "__main__":
+    # dump_sequels()
+    write_movie_sequels()
+    exit(0)
     # write_triples()
     # write_uri_names()
     # exit(0)
