@@ -323,12 +323,15 @@ def write_movie_sequels():
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
+        movie_uris = set(movie_uri.values())
+
         for key, value in movie_sequels.items():
             if not value or key not in movie_uri:
                 continue
 
             for tail in value:
-                writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'FOLLOWED_BY'})
+                if tail in movie_uris:
+                    writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'FOLLOWED_BY'})
 
 
 def write_movie_genres():
@@ -338,15 +341,12 @@ def write_movie_genres():
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
-        movie_uris = set(movie_uri.values())
-
         for key, value in movie_genres.items():
             if not value or key not in movie_uri:
                 continue
 
             for tail in value:
-                if tail in movie_uris:
-                    writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'HAS_GENRE'})
+                writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'HAS_GENRE'})
 
 
 def _write_movie_person(source, dest, relation, valid_people):
