@@ -319,19 +319,22 @@ def write_movie_subjects():
 def write_movie_sequels():
     movie_sequels = json.load(open(movie_sequels_path, 'r'))
 
+    imdb_set = set(movies.imdbId)
+    movie_uris = {imdb: uri for imdb, uri in movie_uri.items() if imdb in imdb_set}
+
     with open(os.path.join(csv_path, 'movie_sequel.csv'), 'w') as fp:
         writer = csv.DictWriter(fp, [':START_ID', ':END_ID', ':TYPE'])
         writer.writeheader()
 
-        movie_uris = set(movie_uri.values())
+        uris = set(movie_uri.values())
 
         for key, value in movie_sequels.items():
-            if not value or key not in movie_uri:
+            if not value or key not in movie_uris:
                 continue
 
             for tail in value:
-                if tail in movie_uris:
-                    writer.writerow({':START_ID': movie_uri[key], ':END_ID': tail, ':TYPE': 'FOLLOWED_BY'})
+                if tail in uris:
+                    writer.writerow({':START_ID': movie_uris[key], ':END_ID': tail, ':TYPE': 'FOLLOWED_BY'})
 
 
 def write_movie_genres():
