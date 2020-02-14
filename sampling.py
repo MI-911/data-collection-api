@@ -1,8 +1,11 @@
 from random import shuffle
 
-from numpy import random, asarray
+from numpy import random, asarray, log2
 
 from dataset import movies
+from queries import get_counts
+
+ENTITY_COUNTS = get_counts()
 
 
 def _choice(lst, weights):
@@ -50,25 +53,22 @@ def sample_relevant_neighbours(entities, num_entities):
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    all_entities = [_subselection(entities, 'movie'), _subselection(entities, 'person'),
-                    _subselection(entities, 'category'), _subselection(entities, 'decade'),
-                    _subselection(entities, 'company')]
+    all_entities = [(log2(value), _subselection(entities, key.lower())) for key, value in ENTITY_COUNTS.items()]
 
-    result = []
+    print(all_entities)
 
-    seen = True
-    while len(result) < num_entities and seen:
-        seen = False
+    result = list()
 
-        for subset in all_entities:
-            if len(result) >= num_entities:
-                break
+    while len(result) < num_entities:
+        if not all_entities:
+            break
 
-            if not subset:
-                continue
+        count, subset = _choice(all_entities, asarray([count for count, _ in all_entities]))
 
-            seen = True
-            result.append(_record_choice(subset))
+        if not subset:
+            continue
+
+        result.append(_record_choice(subset))
 
     return result
 
