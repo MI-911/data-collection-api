@@ -24,6 +24,18 @@ def get_number_entities():
     return res['count']
 
 
+def get_counts():
+    query = """
+            CALL apoc.meta.stats() YIELD labels
+            RETURN labels {.Person, .Category, .Decade, .Company, .Movie} AS counts
+            """
+
+    with driver.session() as session:
+        res = session.read_transaction(_generic_get, query).single()
+
+        return res[0]
+
+
 def get_entities():
     query = """
             MATCH (n) RETURN n.uri AS uri, n.name AS name, LABELS(n) AS labels
@@ -84,3 +96,7 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
         res = [r for r in res]
 
     return res
+
+
+if __name__ == '__main__':
+    print(sum(get_counts().values()))

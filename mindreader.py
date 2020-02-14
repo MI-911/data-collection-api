@@ -10,7 +10,7 @@ from numpy.random import shuffle
 from pandas import DataFrame
 
 import dataset
-from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities
+from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities, get_counts
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri, _record_choice
 from statistics import compute_statistics
 from util.encoder import NpEncoder
