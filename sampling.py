@@ -54,6 +54,7 @@ def sample_relevant_neighbours(entities, num_entities):
     out with entities from the entity list, sampled in order of PageRank.
     """
     all_entities = [(log2(value), _subselection(entities, key.lower())) for key, value in ENTITY_COUNTS.items()]
+    all_entities_copy = all_entities.copy()
 
     print(all_entities)
 
@@ -61,14 +62,16 @@ def sample_relevant_neighbours(entities, num_entities):
 
     while len(result) < num_entities:
         if not all_entities:
-            break
+            all_entities = all_entities_copy.copy()
 
         count, subset = _choice(all_entities, asarray([count for count, _ in all_entities]))
 
         if not subset:
             continue
 
-        result.append(_record_choice(subset))
+        record = _record_choice(subset)
+        all_entities_copy = [(s1, types if count != s1 else [r for r in types if r['uri'] != record['uri']]) for s1, types in all_entities_copy]
+        result.append(record)
 
     return result
 
