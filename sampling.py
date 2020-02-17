@@ -1,6 +1,5 @@
 from random import shuffle
-
-from numpy import random, asarray, log2
+from numpy import random, asarray, log2, arange
 
 from dataset import movies
 from queries import get_counts
@@ -13,7 +12,7 @@ def _choice(lst, weights):
         return None
 
     w_sum = weights.sum(axis=0)
-    indices = [idx for idx in range(len(lst))]
+    indices = arange(len(lst))
 
     if w_sum:
         idx = random.choice(indices, p=weights / w_sum, replace=True)
