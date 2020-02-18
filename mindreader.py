@@ -3,6 +3,7 @@ import json
 import os
 import time
 from concurrent.futures import ThreadPoolExecutor, wait
+from functools import reduce
 
 from flask import Flask, jsonify, request, abort, make_response
 from flask_cors import CORS
@@ -20,17 +21,31 @@ app = Flask(__name__)
 app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
+# How many questions to ask the user before showing predictions
 MIN_QUESTIONS = 30
+
+# How many movies they must answer before random entities are shown
 MINIMUM_SEED_SIZE = 10
-SESSION = {}
+
+# How many questions are shown per page before preidctions
 N_QUESTIONS = 9
+
+# How many entities are shown per group (like, dislike, random)
 N_ENTITIES = N_QUESTIONS // 3
+
+# How many entities are predicted per group (like, dislike)
+LAST_N_RATED_QUESTIONS = 5
+
+# All sessions are saved with their current session
 CURRENT_VERSION = 'thesis'
 
-LAST_N_RATED_QUESTIONS = 9
+# Maintains all relevant sessions
+SESSION = {}
 
-UUID_LENGTH = 36
+# Maintains a set of heads (user tokens) that have been loaded from files
+LOADED_HEADS = set()
 
+# Various constants
 LIKED = 'liked'
 DISLIKED = 'disliked'
 UNKNOWN = 'unknown'
@@ -38,7 +53,6 @@ TIMESTAMPS = 'timestamps'
 FINAL = 'final'
 VERSION = 'version'
 POPULARITY = 'popularity_sampled'
-
 SESSION_PATH = 'sessions'
 
 if not os.path.exists(SESSION_PATH):
@@ -46,7 +60,8 @@ if not os.path.exists(SESSION_PATH):
 
 
 def _get_samples(amount):
-    samples = dataset.sample(amount, get_cross_session_seen_entities())
+    liked, disliked, unknown, seen_entities = get_cross_session_entities()
+    samples = dataset.sample(amount, seen_entities)
     update_session([], [], [], list(samples.uri))
 
     return [_get_movie_from_row(row) for index, row in samples.iterrows()]
@@ -73,6 +88,44 @@ def statistics():
     return jsonify(compute_statistics(versions))
 
 
+def _get_recommendations(liked, disliked, seen_entities):
+    parallel = list()
+
+    parallel.append([get_last_batch, liked, seen_entities])
+    parallel.append([get_last_batch, disliked, seen_entities])
+
+    liked_res, disliked_res = get_next_entities(parallel)
+
+    for uri in set([item['uri'] for item in liked_res]).intersection(set([item['uri'] for item in disliked_res])):
+        liked_res = list(filter(lambda u: u['uri'] != uri, liked_res))
+        disliked_res = list(filter(lambda u: u['uri'] != uri, disliked_res))
+
+    # Map to uris
+    liked_res = [item['uri'] for item in liked_res[:LAST_N_RATED_QUESTIONS]]
+    disliked_res = [item['uri'] for item in disliked_res[:LAST_N_RATED_QUESTIONS]]
+
+    # Get rows from movies
+    liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res]
+    disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
+
+    return {
+        'prediction': True,
+        'likes': liked_res,
+        'dislikes': disliked_res
+    }
+
+
+@app.route('/api/recommendations')
+def recommendations():
+    # Ensure that the user's sessions are loaded into memory
+    get_sessions(get_authorization())
+
+    # Get the user's preferences across all her previous sessions
+    liked, disliked, unknown, seen_entities = get_cross_session_entities()
+
+    return jsonify(_get_recommendations(liked, disliked, seen_entities))
+
+
 @app.route('/api/movies')
 def movies():
     if is_invalid_request():
@@ -92,7 +145,7 @@ def _has_both_sentiments():
 
 
 def is_done():
-    return len(get_rated_entities()) >= MIN_QUESTIONS
+    return len(get_current_session_entities()) >= MIN_QUESTIONS
 
 
 def _make_csv(csv, file_name):
@@ -145,7 +198,7 @@ def get_all_entities():
 def final_feedback():
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [], final=True)
-    return jsonify('Mah man! You know inspect mode!')
+    return 200
 
 
 @app.route('/api/feedback', methods=['POST'])
@@ -156,52 +209,12 @@ def feedback():
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [])
 
-    seen_entities = get_cross_session_seen_entities()
+    liked, disliked, unknown, seen_entities = get_cross_session_entities()
 
-    rated_entities = get_rated_entities()
+    rated_entities = get_current_session_entities()
 
     if is_done():
-        liked = get_liked_entities()
-        disliked = get_disliked_entities()
-        parallel = list()
-
-        parallel.append([get_last_batch, liked, seen_entities])
-        parallel.append([get_last_batch, disliked, seen_entities])
-
-        liked_res, disliked_res = get_next_entities(parallel)
-
-        for uri in set([item['uri'] for item in liked_res]).intersection(set([item['uri'] for item in disliked_res])):
-            liked_res = list(filter(lambda u: u['uri'] != uri, liked_res))
-            disliked_res = list(filter(lambda u: u['uri'] != uri, disliked_res))
-
-        # samples = _get_samples(LAST_N_QUESTIONS * 2)
-
-        # # Sample from each result
-        # liked_res = _record_choice(liked_res, LAST_N_RATED_QUESTIONS)
-        # disliked_res = _record_choice(disliked_res, LAST_N_RATED_QUESTIONS)
-
-        # Map to uris
-        liked_res = [item['uri'] for item in liked_res[:LAST_N_RATED_QUESTIONS]]
-        disliked_res = [item['uri'] for item in disliked_res[:LAST_N_RATED_QUESTIONS]]
-
-        # Get rows from movies
-        liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res]
-        disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
-
-        # for movie in liked_res + disliked_res:
-        #     samples = list(filter(lambda m: m['uri'] != movie['uri'], samples))
-        #
-        # liked_res = liked_res + samples[:LAST_N_QUESTIONS - len(liked_res)]
-        # disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS - len(disliked_res)):]
-        #
-        # shuffle(liked_res)
-        # shuffle(disliked_res)
-
-        return jsonify({
-            'prediction': True,
-            'likes': liked_res,
-            'dislikes': disliked_res
-        })
+        return jsonify(_get_recommendations(liked, disliked, seen_entities))
 
     parallel = []
     num_rand = N_ENTITIES
@@ -228,12 +241,12 @@ def feedback():
         # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
-        result_entities = random_entities + [record_to_entity(x) for x in requested_entities]
+        result_entities = random_entities + [record_to_entity(entity) for entity in requested_entities]
     else:
         parallel.append([get_related_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
         requested_entities = [entity for result in results for entity in result]
-        result_entities = [record_to_entity(x) for x in requested_entities]
+        result_entities = [record_to_entity(entity) for entity in requested_entities]
 
     no_duplicates = sorted({r['uri']: r for r in result_entities}.values(), key=lambda x: x['description'])
 
@@ -278,8 +291,8 @@ def update_session(liked, disliked, unknown, popularity_sampled, final=False):
                 VERSION: CURRENT_VERSION
             }
 
-        if len(header) > UUID_LENGTH:
-            set_all_sessions(header)
+        # Ensure that all the user's sessions are loaded into memory
+        get_sessions(header)
 
     SESSION[header][TIMESTAMPS] += [time.time()]
     SESSION[header][LIKED] += list(liked)
@@ -298,10 +311,10 @@ def get_seen_entities():
     if header not in SESSION:
         return []
 
-    return get_rated_entities() + SESSION[header][UNKNOWN]
+    return get_current_session_entities() + SESSION[header][UNKNOWN]
 
 
-def get_rated_entities():
+def get_current_session_entities():
     header = get_authorization()
 
     if header not in SESSION:
@@ -338,19 +351,19 @@ def get_authorization():
     return request.headers.get("Authorization")
 
 
-def get_cross_session_seen_entities():
+def get_cross_session_entities():
     header = get_authorization()
+    
+    entities = [get_cross_session_entities_generic(header, name) for name in [LIKED, DISLIKED, UNKNOWN]]
+    entities.append(reduce(lambda a, b: a + b, entities))
 
-    if header not in SESSION:
-        return []
-
-    return get_cross_session_entities_generic(header, LIKED) + get_cross_session_entities_generic(header, DISLIKED) + \
-        get_cross_session_entities_generic(header, UNKNOWN)
+    return entities
 
 
 def get_cross_session_entities_generic(header, type):
     results = []
     head = header.split('+')[0]
+
     for key, value in SESSION.items():
         if key.startswith(head):
             results.extend(value[type])
@@ -358,17 +371,21 @@ def get_cross_session_entities_generic(header, type):
     return results
 
 
-def set_all_sessions(header):
+def get_sessions(header):
     head = header.split('+')[0]  # Get initial head
-
+    if head in LOADED_HEADS:
+        return
+    
     # Match all headers containing initial head
     for filename in glob.glob(os.path.join(SESSION_PATH, f'{head}+*.json')):
         with open(filename, 'r') as f:
-            h = os.path.basename(os.path.splitext(filename)[0])
-            if h == header:
+            file_head = os.path.basename(os.path.splitext(filename)[0])
+            if file_head == header:
                 continue
 
-            SESSION[h] = json.load(f)
+            SESSION[file_head] = json.load(f)
+
+    LOADED_HEADS.add(head)
 
 
 if __name__ == "__main__":
