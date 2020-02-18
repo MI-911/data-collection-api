@@ -1,6 +1,5 @@
 from random import shuffle
-
-from numpy import random, asarray, log2
+from numpy import random, asarray, log2, arange
 
 from dataset import movies
 from queries import get_counts
@@ -8,12 +7,12 @@ from queries import get_counts
 ENTITY_COUNTS = get_counts()
 
 
-def _choice(lst, weights):
+def _choice(lst, weights, remove=True):
     if not lst:
         return None
 
     w_sum = weights.sum(axis=0)
-    indices = [idx for idx in range(len(lst))]
+    indices = arange(len(lst))
 
     if w_sum:
         idx = random.choice(indices, p=weights / w_sum, replace=True)
@@ -21,7 +20,8 @@ def _choice(lst, weights):
         idx = random.choice(indices)
 
     element = lst[idx]
-    lst.pop(idx)
+    if remove:
+        lst.pop(idx)
 
     return element
 
@@ -53,18 +53,12 @@ def sample_relevant_neighbours(entities, num_entities):
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    all_entities = [(log2(value), _subselection(entities, key.lower())) for key, value in ENTITY_COUNTS.items()]
-
-    print(all_entities)
+    all_entities = [(log2(value), _subselection(entities, key.lower()), key) for key, value in ENTITY_COUNTS.items()]
 
     result = list()
 
-    while len(result) < num_entities:
-        if not all_entities:
-            break
-
-        count, subset = _choice(all_entities, asarray([count for count, _ in all_entities]))
-
+    while len(result) < num_entities and any(subselection for _, subselection, _ in all_entities):
+        count, subset, name = _choice(all_entities, asarray([count for count, _, _ in all_entities]), remove=False)
         if not subset:
             continue
 
