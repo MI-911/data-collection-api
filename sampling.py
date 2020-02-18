@@ -7,7 +7,7 @@ from queries import get_counts
 ENTITY_COUNTS = get_counts()
 
 
-def _choice(lst, weights):
+def _choice(lst, weights, remove=True):
     if not lst:
         return None
 
@@ -20,7 +20,8 @@ def _choice(lst, weights):
         idx = random.choice(indices)
 
     element = lst[idx]
-    lst.pop(idx)
+    if remove:
+        lst.pop(idx)
 
     return element
 
@@ -52,25 +53,16 @@ def sample_relevant_neighbours(entities, num_entities):
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    all_entities = [(log2(value), _subselection(entities, key.lower())) for key, value in ENTITY_COUNTS.items()]
-    all_entities_copy = all_entities.copy()
-
-    print(all_entities)
+    all_entities = [(log2(value), _subselection(entities, key.lower()), key) for key, value in ENTITY_COUNTS.items()]
 
     result = list()
 
-    while len(result) < num_entities:
-        if not all_entities:
-            all_entities = all_entities_copy.copy()
-
-        count, subset = _choice(all_entities, asarray([count for count, _ in all_entities]))
-
+    while len(result) < num_entities and any(subselection for _, subselection, _ in all_entities):
+        count, subset, name = _choice(all_entities, asarray([count for count, _, _ in all_entities]), remove=False)
         if not subset:
             continue
 
-        record = _record_choice(subset)
-        all_entities_copy = [(s1, types if count != s1 else [r for r in types if r['uri'] != record['uri']]) for s1, types in all_entities_copy]
-        result.append(record)
+        result.append(_record_choice(subset))
 
     return result
 
