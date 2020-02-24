@@ -33,8 +33,11 @@ N_QUESTIONS = 9
 # How many entities are shown per group (like, dislike, random)
 N_ENTITIES = N_QUESTIONS // 3
 
-# How many entities are predicted per group (like, dislike)
-LAST_N_RATED_QUESTIONS = 5
+# How many entities are shown per group (like, dislike)
+LAST_N_QUESTIONS = 6
+
+# How many entities predicted per group (like, dislike)
+LAST_N_REC_QUESTIONS = 3
 
 # All sessions are saved with their current session
 CURRENT_VERSION = 'thesis'
@@ -100,13 +103,28 @@ def _get_recommendations(liked, disliked, seen_entities):
         liked_res = list(filter(lambda u: u['uri'] != uri, liked_res))
         disliked_res = list(filter(lambda u: u['uri'] != uri, disliked_res))
 
+    # Get random samples
+    samples = _get_samples(LAST_N_QUESTIONS * 2)
+
     # Map to uris
-    liked_res = [item['uri'] for item in liked_res[:LAST_N_RATED_QUESTIONS]]
-    disliked_res = [item['uri'] for item in disliked_res[:LAST_N_RATED_QUESTIONS]]
+    liked_res = [item['uri'] for item in liked_res[:LAST_N_REC_QUESTIONS]]
+    disliked_res = [item['uri'] for item in disliked_res[:LAST_N_REC_QUESTIONS]]
 
     # Get rows from movies
     liked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in liked_res]
     disliked_res = [_get_movie_from_row(_movie_from_uri(uri)) for uri in disliked_res]
+
+    # Filter out movies already in liked or disliked from random samples
+    for movie in liked_res + disliked_res:
+        samples = list(filter(lambda m: m['uri'] != movie['uri'], samples))
+
+    # Add random samples to liked and disliked (from different directions.
+    liked_res = liked_res + samples[:LAST_N_QUESTIONS - len(liked_res)]
+    disliked_res = disliked_res + samples[-(LAST_N_QUESTIONS - len(disliked_res)):]
+
+    # Shuffle
+    shuffle(liked_res)
+    shuffle(disliked_res)
 
     return {
         'prediction': True,
