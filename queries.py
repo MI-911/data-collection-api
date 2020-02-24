@@ -61,13 +61,13 @@ def get_triples():
 def get_last_batch(source_uris, seen):
     # count(r) is the number of connections to the movies
 
-    query1 = """
+    query = """
             MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
                 WITH m.uri AS uri, m.pagerank * log(1 + count(r)) * log(1 + m.weight) AS score, m.weight AS weight
             RETURN uri, score, weight
             """
 
-    query = """
+    query1 = """
             MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
             CALL particlefiltering(nLst, 0,100) YIELD nodeId, score
             MATCH (n) WHERE n:Movie AND id(n) = nodeId AND NOT n.uri IN $seen RETURN n.uri AS uri, score
@@ -79,7 +79,7 @@ def get_last_batch(source_uris, seen):
 
     with driver.session() as session:
         res = session.read_transaction(_generic_get, query, args)
-        res = [{'uri': r['uri'], 'score': r['score']} for r in res]
+        res = [{'uri': r['uri'], 'score': r['score'], 'weight': r['weight']} for r in res]
 
     return res
 

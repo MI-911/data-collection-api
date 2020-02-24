@@ -53,16 +53,25 @@ def sample_relevant_neighbours(entities, num_entities):
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    all_entities = [(log2(value), _subselection(entities, key.lower()), key) for key, value in ENTITY_COUNTS.items()]
+    all_entities = [_subselection(entities, 'movie'), _subselection(entities, 'person'),
+                    _subselection(entities, 'category'), _subselection(entities, 'decade'),
+                    _subselection(entities, 'company')]
 
-    result = list()
+    result = []
 
-    while len(result) < num_entities and any(subselection for _, subselection, _ in all_entities):
-        count, subset, name = _choice(all_entities, asarray([count for count, _, _ in all_entities]), remove=False)
-        if not subset:
-            continue
+    seen = True
+    while len(result) < num_entities and seen:
+        seen = False
 
-        result.append(_record_choice(subset))
+        for subset in all_entities:
+            if len(result) >= num_entities:
+                break
+
+            if not subset:
+                continue
+
+            seen = True
+            result.append(_record_choice(subset))
 
     return result
 
