@@ -94,11 +94,13 @@ def statistics():
 def _get_recommendations(liked, disliked, seen_entities):
     parallel = list()
 
+    # Append functions and arguments for parallel execution
     parallel.append([get_last_batch, liked, seen_entities])
     parallel.append([get_last_batch, disliked, seen_entities])
 
     liked_res, disliked_res = get_next_entities(parallel)
 
+    # Remove overlapping entities
     for uri in set([item['uri'] for item in liked_res]).intersection(set([item['uri'] for item in disliked_res])):
         liked_res = list(filter(lambda u: u['uri'] != uri, liked_res))
         disliked_res = list(filter(lambda u: u['uri'] != uri, disliked_res))
@@ -214,6 +216,10 @@ def get_all_entities():
 
 @app.route('/api/final', methods=['POST'])
 def final_feedback():
+    """
+    Save feedback ratings.
+    :return: Status Ok
+    """
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [], final=True)
     return 200
@@ -221,57 +227,84 @@ def final_feedback():
 
 @app.route('/api/feedback', methods=['POST'])
 def feedback():
+    """
+    Save feedback ratings and return next page.
+    :return: Entities for the next page.
+    """
+
     if is_invalid_request():
         return abort(400)
 
+    # Get feedback and update session
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [])
 
+    # Get seen entities from all sessions
     liked, disliked, unknown, seen_entities = get_cross_session_entities()
 
+    # Gets entities from current only
     rated_entities = get_current_session_entities()
 
+    # If done, show end page with possible recommendations.
     if is_done():
         return jsonify(_get_recommendations(liked, disliked, seen_entities))
 
+    # Initialise variables
     parallel = []
     num_rand = N_ENTITIES
-
     extra = 0
+
+    # If we only have liked or disliked, we distribute the empty group sample evenly on the two last.
+    # Example, if we have N_ENTITIES = 3, and only likes, then we would draw 4 samples given the liked entities and
+    # 5 randomly.
     if bool(json_data[LIKED]) != bool(json_data[DISLIKED]):
         extra = N_ENTITIES // 2
 
     if json_data[LIKED]:
         parallel.append([get_related_entities, list(json_data[LIKED]), seen_entities,
-                         (N_ENTITIES + extra) if extra else None])
+                         (N_ENTITIES + extra)])
     else:
-        num_rand += (N_ENTITIES - (N_ENTITIES // 2)) if extra else N_ENTITIES
+        num_rand += (N_ENTITIES - extra) if extra else N_ENTITIES
 
     if json_data[DISLIKED]:
         parallel.append([get_related_entities, list(json_data[DISLIKED]), seen_entities,
-                         (N_ENTITIES + extra) if extra else None])
+                         (N_ENTITIES + extra)])
     else:
-        num_rand += (N_ENTITIES - (N_ENTITIES // 2)) if extra else N_ENTITIES
+        num_rand += (N_ENTITIES - extra) if extra else N_ENTITIES
 
+    # Sample x random recommendable entities
     random_entities = _get_samples(num_rand)
 
+    # As long as we have to few like/dislike ratings, we will only show random recommendable entities.
+    # When we have enough ratings, we use the recommendable entities as a seed set.
     if len(rated_entities) < MINIMUM_SEED_SIZE:
-        # Find the relevant neighbors (with page rank) from the liked and disliked seeds
         results = get_next_entities(parallel)
+
+        # Flatten list
         requested_entities = [entity for result in results for entity in result]
+
+        # Combine with random
         result_entities = random_entities + [record_to_entity(entity) for entity in requested_entities]
     else:
         parallel.append([get_related_entities, [item['uri'] for item in random_entities], seen_entities, num_rand])
         results = get_next_entities(parallel)
+
+        # Flatten list
         requested_entities = [entity for result in results for entity in result]
         result_entities = [record_to_entity(entity) for entity in requested_entities]
 
+    # Remove possible duplicates.
     no_duplicates = sorted({r['uri']: r for r in result_entities}.values(), key=lambda x: x['description'])
 
     return jsonify(no_duplicates)
 
 
 def get_next_entities(parallel):
+    """
+    Calls x methods in parallel and returns their results.
+    :param parallel: A list of lists contatining methods and arguments to be called in parallel.
+    :return: A list of results in the same order in the input list.
+    """
     f = []
     with ThreadPoolExecutor(max_workers=5) as e:
         for args in parallel:
