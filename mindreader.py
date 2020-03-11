@@ -82,6 +82,11 @@ def _get_movie_from_row(row):
     return res
 
 
+@app.route('/api/sessions')
+def sessions():
+    return jsonify(len(glob.glob(os.path.join(SESSION_PATH, '*.json'))))
+
+
 @app.route('/api/statistics')
 def statistics():
     versions = request.args.get('versions')

@@ -113,10 +113,8 @@ venv.bak/
 
 .vscode/
 
-sessions/
+/sessions*
 
 existing_actors.json
 
 *.gz
-
-sessions-old/
