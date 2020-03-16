@@ -59,14 +59,6 @@ def get_triples():
 
 
 def get_last_batch(source_uris, seen):
-    # count(r) is the number of connections to the movies
-
-    query1 = """
-            MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
-                WITH m.uri AS uri, m.pagerank * log(1 + count(r)) * log(1 + m.weight) AS score, m.weight AS weight
-            RETURN uri, score, weight
-            """
-
     query = """
             MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
             CALL particlefiltering(nLst, 0,100) YIELD nodeId, score
