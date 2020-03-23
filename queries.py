@@ -59,14 +59,6 @@ def get_triples():
 
 
 def get_last_batch(source_uris, seen):
-    # count(r) is the number of connections to the movies
-
-    query1 = """
-            MATCH (r)<--(m:Movie) WHERE r.uri IN $uris AND NOT m.uri IN $seen
-                WITH m.uri AS uri, m.pagerank * log(1 + count(r)) * log(1 + m.weight) AS score, m.weight AS weight
-            RETURN uri, score, weight
-            """
-
     query = """
             MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
             CALL particlefiltering(nLst, 0,100) YIELD nodeId, score
@@ -86,17 +78,17 @@ def get_last_batch(source_uris, seen):
 
 def get_relevant_neighbors(uri_list, seen_uri_list):
     query = """
-            MATCH (n)--(m) WHERE m.uri IN $uris WITH id(n) AS nodeId, count(n) AS connections
+             MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
+            CALL particlefiltering(nLst, 0,100) YIELD nodeId, score
             MATCH (n) WHERE id(n) = nodeId AND NOT n.uri IN $seen
-                WITH DISTINCT id(n) AS id, connections AS multiplier, n.name AS name
+                WITH DISTINCT id(n) AS id, score, n.name AS name
             OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
-                WITH algo.asNode(id) AS r, m, multiplier
+                WITH algo.asNode(id) AS r, m, score
             ORDER BY m.weight DESC
-                WITH r, collect(DISTINCT m)[..5] as movies, multiplier
+                WITH r, collect(DISTINCT m)[..5] as movies, score
             RETURN r:Director AS director, r:Actor AS actor, r.imdb AS imdb, r:Subject AS subject, r:Movie as movie,
                    r:Company AS company, r:Decade AS decade, r.uri AS uri, r.name AS name, r:Genre as genre,
-                   r:Person as person, r:Category as category, r.image AS image, r.year AS year, movies,
-                   r.pagerank * log(1 + multiplier) AS score
+                   r:Person as person, r:Category as category, r.image AS image, r.year AS year, movies, score
             """
 
     args = {'uris': uri_list, 'seen': seen_uri_list}

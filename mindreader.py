@@ -7,12 +7,11 @@ from functools import reduce
 
 from flask import Flask, jsonify, request, abort, make_response
 from flask_cors import CORS
-from numpy.random import shuffle
 from pandas import DataFrame
 
 import dataset
-from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities, get_counts
-from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri, _record_choice
+from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities
+from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 from statistics import compute_statistics
 from util.encoder import NpEncoder
 from util.utilities import get_ratings_dataframe
@@ -77,6 +76,11 @@ def _get_movie_from_row(row):
     }
 
     return res
+
+
+@app.route('/api/sessions')
+def sessions():
+    return jsonify(len(glob.glob(os.path.join(SESSION_PATH, '*.json'))))
 
 
 @app.route('/api/statistics')
