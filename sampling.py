@@ -46,6 +46,13 @@ def _subselection(entities, entity_type):
     return [entity for entity in entities if entity[entity_type]]
 
 
+def multiplier(entity_type):
+    return {
+        'decade': 0.25,
+        'company': 0.5
+    }.get(entity_type, 1.0)
+
+
 def sample_relevant_neighbours(entities, num_entities):
     """
     Attempts to sample n_actors, n_directors and n_subjects from the entities.
@@ -53,10 +60,10 @@ def sample_relevant_neighbours(entities, num_entities):
     If there are not enough of either type of entity, the remaining space is filled
     out with entities from the entity list, sampled in order of PageRank.
     """
-    all_entities = [(log2(value), _subselection(entities, key.lower()), key) for key, value in ENTITY_COUNTS.items()]
+    all_entities = [(log2(value) * multiplier(key.lower()), _subselection(entities, key.lower()), key) for key, value in ENTITY_COUNTS.items()]
 
     result = list()
-
+    print(len(all_entities))
     while len(result) < num_entities and any(subselection for _, subselection, _ in all_entities):
         count, subset, name = _choice(all_entities, asarray([count for count, _, _ in all_entities]), remove=False)
         if not subset:

@@ -61,7 +61,7 @@ def get_triples():
 def get_last_batch(source_uris, seen):
     query = """
             MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
-            CALL particlefiltering(nLst, 0,100) YIELD nodeId, score
+            CALL particlefiltering(nLst, 0, 100) YIELD nodeId, score
             MATCH (n) WHERE n:Movie AND id(n) = nodeId AND NOT n.uri IN $seen RETURN n.uri AS uri, score
             ORDER BY score DESC
             LIMIT 10
@@ -79,7 +79,7 @@ def get_last_batch(source_uris, seen):
 def get_relevant_neighbors(uri_list, seen_uri_list):
     query = """
              MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
-            CALL particlefiltering(nLst, 0,100) YIELD nodeId, score
+            CALL particlefiltering(nLst, 0, 100) YIELD nodeId, score
             MATCH (n) WHERE id(n) = nodeId AND NOT n.uri IN $seen
                 WITH DISTINCT id(n) AS id, score, n.name AS name
             OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
