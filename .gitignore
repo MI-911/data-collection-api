@@ -118,4 +118,4 @@ existing_actors.json
 
 *.gz
 
-sessions-weighted
+sessions*
