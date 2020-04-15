@@ -76,13 +76,17 @@ def get_last_batch(source_uris, seen):
     return res
 
 
-def get_relevant_neighbors(uri_list, seen_uri_list):
+def get_relevant_neighbors(uri_list, seen_uri_list, k=10):
     query = """
              MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
             CALL particlefiltering(nLst, 0, 100) YIELD nodeId, score
             MATCH (n) WHERE id(n) = nodeId AND NOT n.uri IN $seen
-                WITH DISTINCT id(n) AS id, score, n.name AS name
-            OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id
+                WITH DISTINCT id(n) AS id, score, n.name AS name, labels(n) AS l
+            ORDER BY score DESC
+                WITH DISTINCT l, collect({id: id, s: score, n: name})[..$k] AS topk
+            UNWIND topk AS t
+                WITH t.id AS id, t.s AS score, t.n AS name
+            OPTIONAL MATCH (r)<--(m:Movie) WHERE id(r) = id AND NOT r:Movie
                 WITH algo.asNode(id) AS r, m, score
             ORDER BY m.weight DESC
                 WITH r, collect(DISTINCT m)[..5] as movies, score
@@ -91,7 +95,7 @@ def get_relevant_neighbors(uri_list, seen_uri_list):
                    r:Person as person, r:Category as category, r.image AS image, r.year AS year, movies, score
             """
 
-    args = {'uris': uri_list, 'seen': seen_uri_list}
+    args = {'uris': uri_list, 'seen': seen_uri_list, 'k': k}
 
     with driver.session() as session:
         res = session.read_transaction(_generic_get, query, args)
