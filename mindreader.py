@@ -27,7 +27,7 @@ MIN_QUESTIONS = 30
 # How many movies they must answer before random entities are shown
 MINIMUM_SEED_SIZE = 10
 
-# How many questions are shown per page before preidctions
+# How many questions are shown per page before predictions
 N_QUESTIONS = 9
 
 # How many entities are shown per group (like, dislike, random)
@@ -40,7 +40,7 @@ LAST_N_QUESTIONS = 6
 LAST_N_REC_QUESTIONS = 3
 
 # All sessions are saved with their current session
-CURRENT_VERSION = 'thesis'
+CURRENT_VERSION = 'thesis-ppr'
 
 # Maintains all relevant sessions
 SESSION = {}
