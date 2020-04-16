@@ -1,8 +1,6 @@
 import gc
-import math
 import os
 import re
-from time import time
 
 import numpy as np
 import pandas as pd
@@ -81,6 +79,7 @@ def get_num_ratings(movie_id):
 def get_year(movie_id): 
     return int(movies[movies['movieId'] == movie_id]['year'].values[-1])
 
+
 DATA_PATH = 'data'
 ml_path = os.path.join(DATA_PATH, 'movielens')
 
@@ -141,10 +140,3 @@ for df in [movies, ratings, links]:
 # Free ratings from memory
 del ratings, summaries
 gc.collect()
-
-if __name__ == "__main__":
-    print(list(movies.sort_values(by='weight')[::-1]['title']))
-    for n in range(10):
-        print(f'Starts {time()}')
-        sampled = movies.sample(n=30, weights=movies.weight)
-        print(sampled.title)

@@ -14,8 +14,8 @@ import dataset
 from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 from statistics import compute_statistics
-from util.encoder import NpEncoder
-from util.utilities import get_ratings_dataframe
+from utility.encoder import NpEncoder
+from utility.utilities import get_ratings_dataframe
 
 app = Flask(__name__)
 app.json_encoder = NpEncoder
@@ -219,7 +219,8 @@ def get_all_entities():
 def final_feedback():
     json_data = request.json
     update_session(set(json_data[LIKED]), set(json_data[DISLIKED]), set(json_data[UNKNOWN]), [], final=True)
-    return 200
+
+    return jsonify({'success': True})
 
 
 @app.route('/api/feedback', methods=['POST'])

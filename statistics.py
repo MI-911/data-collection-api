@@ -8,11 +8,13 @@ from scipy import median, mean, amin, amax, std, percentile
 
 from dataset import movie_uris_set
 from queries import get_number_entities
-from util.utilities import get_unique_uuids, get_sessions
+from utility.utilities import get_unique_uuids, get_sessions
 
 uri_name = dict()
-if exists('uri_name.csv'):
-    with open('uri_name.csv', 'r') as fp:
+uri_name_path = 'data/movielens/uri_name.csv'
+
+if exists(uri_name_path):
+    with open(uri_name_path, 'r') as fp:
         reader = csv.DictReader(fp)
 
         for row in reader:

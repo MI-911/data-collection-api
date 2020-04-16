@@ -76,7 +76,7 @@ def get_last_batch(source_uris, seen):
     return res
 
 
-def get_relevant_neighbors(uri_list, seen_uri_list, k=10):
+def get_relevant_neighbors(uri_list, seen_uri_list, k=15):
     query = """
              MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
             CALL particlefiltering(nLst, 0, 100) YIELD nodeId, score
@@ -102,7 +102,3 @@ def get_relevant_neighbors(uri_list, seen_uri_list, k=10):
         res = [r for r in res]
 
     return res
-
-
-if __name__ == '__main__':
-    print(sum(get_counts().values()))

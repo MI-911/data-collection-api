@@ -1,13 +1,10 @@
 /sessions*
 *venv/
 .*/
-movie_actors/
-actor_images/
-movie_images/
 data/movielens/links.csv
 data/movielens/movies.csv
 data/movielens/ratings.csv
 wikidata
 *.tar.gz
-data/movielens/20m
-data/movielens/100k
+/data/movielens/20m
+/data/movielens/100k

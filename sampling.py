@@ -107,26 +107,6 @@ def get_description(record):
     return list_concatenation(titles)
 
 
-def _person(record):
-    return record['director'] or record['actor']
-
-
-def get_resource(record):
-    if _person(record):
-        return 'actor'
-    elif record['movie']:
-        return 'movie'
-
-    return 'subject'
-
-
-def get_id(record):
-    if _person(record) or record['movie']:
-        return record['imdb']
-
-    return None
-
-
 def record_to_entity(record):
     movie = _movie_from_uri(record['uri']) if record['movie'] else None
 
