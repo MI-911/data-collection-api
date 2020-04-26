@@ -11,6 +11,7 @@ from flask_cors import CORS
 from pandas import DataFrame
 
 import dataset
+from configuration import *
 from queries import get_relevant_neighbors, get_last_batch, get_triples, get_entities
 from sampling import sample_relevant_neighbours, record_to_entity, _movie_from_uri
 from statistics import compute_statistics
@@ -21,42 +22,11 @@ app = Flask(__name__)
 app.json_encoder = NpEncoder
 cors = CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# How many questions to ask the user before showing predictions
-MIN_QUESTIONS = 30
-
-# How many movies they must answer before random entities are shown
-MINIMUM_SEED_SIZE = 10
-
-# How many questions are shown per page before predictions
-N_QUESTIONS = 9
-
-# How many entities are shown per group (like, dislike, random)
-N_ENTITIES = N_QUESTIONS // 3
-
-# How many entities are shown per recommendation group (like, dislike)
-LAST_N_QUESTIONS = 6
-
-# How many entities predicted per group (like, dislike)
-LAST_N_REC_QUESTIONS = 3
-
-# All sessions are saved with their current session
-CURRENT_VERSION = 'thesis-ppr'
-
 # Maintains all relevant sessions
 SESSION = {}
 
 # Maintains a set of heads (user tokens) that have been loaded from files
 LOADED_HEADS = set()
-
-# Various constants
-LIKED = 'liked'
-DISLIKED = 'disliked'
-UNKNOWN = 'unknown'
-TIMESTAMPS = 'timestamps'
-FINAL = 'final'
-VERSION = 'version'
-POPULARITY = 'popularity_sampled'
-SESSION_PATH = 'sessions'
 
 if not os.path.exists(SESSION_PATH):
     os.mkdir(SESSION_PATH)
