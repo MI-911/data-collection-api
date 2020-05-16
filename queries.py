@@ -76,7 +76,7 @@ def get_last_batch(source_uris, seen):
     return res
 
 
-def get_relevant_neighbors(uri_list, seen_uri_list, k=15):
+def get_relevant_neighbors(uri_list, seen_uri_list, k=25):
     query = """
              MATCH (n) WHERE n.uri IN $uris WITH COLLECT(n) AS nLst
             CALL particlefiltering(nLst, 0, 100) YIELD nodeId, score
