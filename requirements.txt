@@ -2,7 +2,7 @@ BeautifulSoup4
 requests
 flask
 pandas
-neo4j
+neo4j==1.7.6
 flask_cors
 lxml
 gunicorn
