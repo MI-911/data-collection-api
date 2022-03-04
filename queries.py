@@ -49,7 +49,7 @@ def get_entities():
 
 def get_triples():
     query = """
-            MATCH (h)-[r]-(t) RETURN h.uri AS head_uri, TYPE(r) AS relation, t.uri AS tail_uri
+            MATCH (h)-[r]->(t) RETURN h.uri AS head_uri, TYPE(r) AS relation, t.uri AS tail_uri
             """
 
     with driver.session() as session:
