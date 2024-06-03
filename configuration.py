@@ -28,4 +28,4 @@ LAST_N_REC_QUESTIONS = 3
 
 # All sessions are saved with their current session
 # As of september 2020, versioning is by month and year
-CURRENT_VERSION = 'september-2020'
+CURRENT_VERSION = 'june-2024'
